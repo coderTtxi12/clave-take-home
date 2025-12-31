@@ -1,0 +1,491 @@
+/* Message */
+.message {
+  display: flex;
+  flex-direction: column;
+}
+
+.message.user {
+  align-items: flex-end;
+}
+
+.message.ai {
+  align-items: flex-start;
+  width: 100%;
+}
+
+.message.ai .messageContent {
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: 0;
+  backdrop-filter: none;
+  padding: 8px 0;
+  box-shadow: none;
+  max-width: 100%;
+  min-width: auto;
+}
+
+.messageContent {
+  max-width: 80%;
+  padding: 18px 24px;
+  border-radius: 20px;
+  position: relative;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.message.user .messageContent {
+  background: var(--message-user-bg);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+.messageText {
+  font-size: 17px;
+  line-height: 1.6;
+  word-wrap: break-word;
+  font-weight: 400;
+}
+
+.streamingCursor {
+  animation: blink 1s infinite;
+  color: var(--text-accent);
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.messageTime {
+  font-size: 13px;
+  opacity: 0.7;
+  margin-top: 10px;
+  color: inherit;
+  font-weight: 300;
+}
+
+/* Message Files Container */
+.messageFilesContainer {
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.messageFiles {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.messageFile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  max-width: 150px;
+  min-width: 130px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.messageFile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.filePreview {
+  width: 100%;
+  height: 120px;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.filePreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.fileIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--text-accent);
+  border-radius: 4px;
+  color: #ffffff;
+}
+
+.fileIcon .material-icons {
+  font-size: 24px;
+}
+
+.fileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fileName {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.fileSize {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 400;
+  text-align: center;
+}
+
+/* Message time only (when no text, only files) */
+.messageTimeOnly {
+  font-size: 13px;
+  opacity: 0.7;
+  margin-top: 10px;
+  padding: 0;
+  text-align: right;
+}
+
+/* Image Preview Modal - Minimalist */
+.imagePreviewModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  cursor: pointer;
+}
+
+.imagePreviewContent {
+  position: relative;
+  max-width: 80vw;
+  max-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.imagePreviewLarge {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  max-width: 1200px;
+  max-height: 800px;
+}
+
+.imagePreviewClose {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  z-index: 10000;
+}
+
+.imagePreviewClose:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.imagePreviewClose .material-icons {
+  font-size: 18px;
+}
+
+/* Markdown Styles */
+.messageText h1,
+.messageText h2,
+.messageText h3,
+.messageText h4,
+.messageText h5,
+.messageText h6 {
+  margin: 16px 0 8px 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.messageText h1 { font-size: 1.5em; }
+.messageText h2 { font-size: 1.3em; }
+.messageText h3 { font-size: 1.2em; }
+.messageText h4 { font-size: 1.1em; }
+.messageText h5 { font-size: 1.05em; }
+.messageText h6 { font-size: 1em; }
+
+.messageText p {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.messageText ul,
+.messageText ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.messageText li {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.messageText blockquote {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 4px solid var(--text-accent);
+  background: var(--bg-tertiary);
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+}
+
+.messageText table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+}
+
+.messageText th,
+.messageText td {
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.messageText th {
+  background: var(--bg-tertiary);
+  font-weight: 600;
+}
+
+.messageText tr:nth-child(even) {
+  background: var(--bg-tertiary);
+}
+
+/* Code Styles */
+.codeWrapper {
+  margin: 16px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000000;
+  border: 1px solid var(--border-color);
+}
+
+/* Minimal Code Block Styles - Two-tone grey theme */
+.codeBlock-minimal {
+  margin: 16px 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.code-header-minimal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 10px;
+  height: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.code-language-minimal {
+  color: #BBBBBB;
+  font-weight: 400;
+  text-transform: lowercase;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.copy-button-minimal {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #BBBBBB;
+  padding: 2px 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 10px;
+  transition: all 0.2s ease;
+}
+
+.copy-button-minimal:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.copy-button-minimal .material-icons {
+  font-size: 12px;
+}
+
+.codeBlock {
+  margin: 0;
+  padding: 16px;
+  background: #000000 !important;
+  color: #BBBBBB;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+  border: none;
+}
+
+/* Override highlight.js background */
+.codeBlock pre {
+  background: #000000 !important;
+}
+
+.codeBlock code {
+  background: #000000 !important;
+}
+
+/* Force background color for all code elements */
+.codeBlock-minimal .codeBlock,
+.codeBlock-minimal .codeBlock pre,
+.codeBlock-minimal .codeBlock code,
+.codeBlock-minimal .codeBlock pre code {
+  background: #000000 !important;
+}
+
+/* Override any highlight.js theme colors */
+.codeBlock-minimal .hljs {
+  background: #000000 !important;
+}
+
+.inlineCode {
+  background: var(--bg-tertiary);
+  color: var(--text-accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+  border: 1px solid var(--border-color);
+}
+
+/* Links */
+.messageText a {
+  color: var(--text-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-bottom 0.2s ease;
+}
+
+.messageText a:hover {
+  border-bottom: 1px solid var(--text-accent);
+}
+
+/* Horizontal Rule */
+.messageText hr {
+  border: none;
+  height: 1px;
+  background: var(--border-color);
+  margin: 24px 0;
+}
+
+/* Strong and Emphasis */
+.messageText strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.messageText em {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .messageContent {
+    max-width: 85%;
+  }
+  
+  .codeBlock {
+    font-size: 13px;
+    padding: 12px;
+  }
+  
+  .code-header-minimal {
+    padding: 3px 6px;
+    height: 22px;
+  }
+  
+  .copy-button-minimal {
+    padding: 2px 3px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 480px) {
+  .messageContent {
+    max-width: 90%;
+    padding: 14px 18px;
+  }
+  
+  .messageText {
+    font-size: 16px;
+  }
+  
+  .codeBlock {
+    font-size: 12px;
+    padding: 10px;
+  }
+  
+  .code-header-minimal {
+    padding: 2px 4px;
+    height: 20px;
+  }
+  
+  .copy-button-minimal {
+    padding: 1px 2px;
+    font-size: 8px;
+  }
+  
+  .copy-button-minimal .material-icons {
+    font-size: 10px;
+  }
+  
+  .messageText table {
+    font-size: 12px;
+  }
+  
+  .messageText th,
+  .messageText td {
+    padding: 6px 8px;
+  }
+}
