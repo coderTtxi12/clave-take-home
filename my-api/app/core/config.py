@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     SUPABASE_URL: Optional[str] = None
     SUPABASE_KEY: Optional[str] = None
     
+    # PostgreSQL Configuration (for docker-compose)
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "restaurant_analytics"
+    
+    # Database Connection (for scripts and Alembic)
+    DB_HOST: str = "localhost"
+    DB_PORT: str = "5433"
+    DB_NAME: str = "restaurant_analytics"
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = "postgres"
+    
     # Redis Configuration
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
