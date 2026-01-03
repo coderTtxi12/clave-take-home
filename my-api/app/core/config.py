@@ -3,10 +3,14 @@ Application configuration using Pydantic Settings
 """
 from pydantic_settings import BaseSettings
 from typing import Optional
+from pathlib import Path
 
 
 class Settings(BaseSettings):
     """Application settings with validation"""
+    
+    # Base directory
+    BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
     
     # API Configuration
     APP_NAME: str = "Data Analyst Agent API"
@@ -43,6 +47,15 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     REDIS_PASSWORD: Optional[str] = None
+    
+    # Code Executor Service Configuration
+    # Default to localhost for local development
+    # Set CODE_EXECUTOR_URL=http://code-executor:8001 in .env if running in Docker
+    CODE_EXECUTOR_URL: str = "http://localhost:8001"
+    CODE_EXECUTOR_TIMEOUT: int = 30  # seconds
+    
+    # OpenAI Configuration
+    OPENAI_API_KEY: Optional[str] = None
     
     # Logging Configuration
     LOG_LEVEL: str = "INFO"

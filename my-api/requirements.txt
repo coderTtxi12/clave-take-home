@@ -10,3 +10,6 @@ python-multipart
 psycopg2-binary
 alembic
 sqlalchemy
+httpx
+openai
+rich

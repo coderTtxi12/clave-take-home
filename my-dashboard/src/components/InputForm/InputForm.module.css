@@ -20,8 +20,8 @@
 }
 
 .inputContainer:focus-within {
-  border-color: var(--text-accent);
-  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
+  border-color: #007AFF;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .attachButton {
@@ -70,7 +70,7 @@
 }
 
 .sendButton {
-  background: var(--text-accent);
+  background: #007AFF;
   border: none;
   color: #ffffff;
   cursor: pointer;
@@ -89,16 +89,16 @@
 
 /* Send button when files are attached - same style as text */
 .sendButton.hasFiles {
-  background: var(--text-accent);
+  background: #007AFF;
 }
 
 .sendButton.hasFiles:hover:not(:disabled) {
-  background: #0d8a6b;
+  background: #0056CC;
   transform: scale(1.05);
 }
 
 .sendButton:hover:not(:disabled) {
-  background: #0d8a6b;
+  background: #0056CC;
   transform: scale(1.05);
 }
 

@@ -6,6 +6,8 @@ export interface Message {
   timestamp: string;
   files?: File[];
   isStreaming?: boolean;
+  imageBase64?: string;  // Base64 encoded image from API
+  imageMime?: string;    // MIME type of the image
 }
 
 // Props para componentes
@@ -20,8 +22,8 @@ export interface WelcomeSectionProps {
   setInputValue: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   isLoading: boolean;
-  inputRef: React.RefObject<HTMLTextAreaElement>;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenFileDialog: () => void;
   selectedFiles: File[];
@@ -31,7 +33,7 @@ export interface WelcomeSectionProps {
 export interface MessageListProps extends WelcomeSectionProps {
   messages: Message[];
   isStreaming: boolean;
-  messagesEndRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export interface MessageProps {
@@ -43,8 +45,8 @@ export interface InputFormProps {
   setInputValue: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   isLoading: boolean;
-  inputRef: React.RefObject<HTMLTextAreaElement>;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenFileDialog: () => void;
   selectedFiles: File[];
@@ -65,9 +67,9 @@ export interface UseChatReturn {
   isLoading: boolean;
   isStreaming: boolean;
   selectedFiles: File[];
-  messagesEndRef: React.RefObject<HTMLDivElement>;
-  inputRef: React.RefObject<HTMLTextAreaElement>;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
   handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   removeFile: (index: number) => void;

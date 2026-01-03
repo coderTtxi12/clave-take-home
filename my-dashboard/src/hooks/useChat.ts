@@ -3,12 +3,51 @@
 import { useState, useRef, useEffect } from 'react';
 import { Message, UseChatReturn } from '@/types';
 
+// Generate or retrieve session ID from localStorage
+// IMPORTANT: Generate a NEW session_id on each page load
+const getSessionId = (): string => {
+  if (typeof window === 'undefined') return '';
+  
+  try {
+    // Always generate a new session ID (don't retrieve from localStorage)
+    // This ensures a fresh session on each page reload
+    const newSessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    
+    // Store it in localStorage for the current session (but won't be reused on reload)
+    localStorage.setItem('coding_agent_session_id', newSessionId);
+    
+    return newSessionId;
+  } catch (error) {
+    // Fallback if localStorage is not available
+    console.warn('localStorage not available, using temporary session ID');
+    return `session-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  }
+};
+
+// API URL from environment (safe for SSR)
+const getApiUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    // Client-side: can use environment variable
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  }
+  // Server-side: default
+  return 'http://localhost:8000';
+};
+
 export const useChat = (): UseChatReturn => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [sessionId, setSessionId] = useState<string>('');
+
+  // Initialize session ID on client side only
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSessionId(getSessionId());
+    }
+  }, []);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -22,40 +61,9 @@ export const useChat = (): UseChatReturn => {
     scrollToBottom();
   }, [messages]);
 
-  const simulateStreaming = async (fullText: string) => {
-    const words = fullText.split(' ');
-    let currentText = '';
-    
-    for (let i = 0; i < words.length; i++) {
-      currentText += (i > 0 ? ' ' : '') + words[i];
-      
-      setMessages(prev => {
-        const newMessages = [...prev];
-        const lastMessage = newMessages[newMessages.length - 1];
-        if (lastMessage?.sender === 'ai' && lastMessage.isStreaming) {
-          lastMessage.text = currentText;
-        }
-        return newMessages;
-      });
-      
-      await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
-    }
-    
-    setMessages(prev => {
-      const newMessages = [...prev];
-      const lastMessage = newMessages[newMessages.length - 1];
-      if (lastMessage?.sender === 'ai' && lastMessage.isStreaming) {
-        lastMessage.isStreaming = false;
-      }
-      return newMessages;
-    });
-    
-    setIsStreaming(false);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!inputValue.trim() && selectedFiles.length === 0) || isLoading || isStreaming) return;
+    if ((!inputValue.trim() && selectedFiles.length === 0) || isLoading || isStreaming || !sessionId) return;
 
     const userInput = inputValue;
     const attachedFiles = [...selectedFiles];
@@ -73,8 +81,7 @@ export const useChat = (): UseChatReturn => {
     setSelectedFiles([]);
     setIsLoading(true);
 
-    await new Promise(resolve => setTimeout(resolve, 800));
-
+    // Create AI message placeholder
     const aiMessage: Message = {
       id: Date.now() + 1,
       text: '',
@@ -84,123 +91,70 @@ export const useChat = (): UseChatReturn => {
     };
 
     setMessages(prev => [...prev, aiMessage]);
-    setIsLoading(false);
     setIsStreaming(true);
 
-    // Generate response with Markdown examples
-    const markdownExamples = [
-      `## Response to: "${userInput}"
+    try {
+      // Call the backend API
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/v1/coding-agent/query`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: userInput,
+          session_id: sessionId || getSessionId(), // Fallback if sessionId not ready
+          max_steps: 10,
+        }),
+      });
 
-I understand your question! Here are some examples of what I can help you with using **Markdown formatting**:
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
 
-### Code Examples
-\`\`\`javascript
-function processData(input) {
-  return input.map(item => ({
-    ...item,
-    processed: true,
-    timestamp: new Date()
-  }));
-}
-\`\`\`
-
-### Data Tables
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Markdown | ✅ | Full support |
-| Code Highlighting | ✅ | Syntax highlighting |
-| Tables | ✅ | Responsive tables |
-| Lists | ✅ | Ordered & unordered |
-
-### Key Points
-- **Bold text** for emphasis
-- *Italic text* for subtle emphasis
-- \`inline code\` for technical terms
-- [Links](https://example.com) for references
-
-> **Note:** This is a simulated response with streaming text to demonstrate the chat interface capabilities.
-
-How else can I assist you?`,
-
-      `## Analysis: "${userInput}"
-
-Great question! Let me break this down with some **structured information**:
-
-### Overview
-Your query involves several important aspects that I can help clarify.
-
-### Technical Details
-\`\`\`python
-def analyze_query(query):
-    """Process and analyze user queries"""
-    keywords = extract_keywords(query)
-    context = determine_context(keywords)
-    return generate_response(context)
-\`\`\`
-
-### Implementation Steps
-1. **First**, identify the core requirements
-2. **Then**, break down into smaller tasks
-3. **Finally**, implement and test
-
-### Resources
-- [Documentation](https://docs.example.com)
-- [API Reference](https://api.example.com)
-- [Community Forum](https://community.example.com)
-
-> **Tip:** Feel free to ask for more specific details about any of these points!`,
-
-      `## Solution for: "${userInput}"
-
-Here's a comprehensive approach to your question:
-
-### Quick Answer
-The solution involves **three main components**:
-
-1. **Setup** - Initial configuration
-2. **Implementation** - Core functionality  
-3. **Testing** - Validation and verification
-
-### Code Implementation
-\`\`\`typescript
-interface SolutionConfig {
-  enabled: boolean;
-  timeout: number;
-  retries: number;
-}
-
-class SolutionProcessor {
-  constructor(private config: SolutionConfig) {}
-  
-  async process(input: string): Promise<string> {
-    // Implementation details here
-    return processedInput;
-  }
-}
-\`\`\`
-
-### Configuration Options
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| \`enabled\` | boolean | true | Enable processing |
-| \`timeout\` | number | 5000 | Timeout in ms |
-| \`retries\` | number | 3 | Max retry attempts |
-
-### Next Steps
-- Review the configuration
-- Test with sample data
-- Monitor performance metrics
-
-**Need more details?** Just ask!`
-    ];
-
-    const randomExample = markdownExamples[Math.floor(Math.random() * markdownExamples.length)];
-    await simulateStreaming(randomExample);
+      const data = await response.json();
+      
+      // Extract answer from response
+      let answer = data.answer || 'No response received';
+      
+      // Update AI message with response
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage?.sender === 'ai' && lastMessage.isStreaming) {
+          lastMessage.text = answer;
+          lastMessage.imageBase64 = data.image_base64 || undefined;
+          lastMessage.imageMime = data.image_mime || undefined;
+          lastMessage.isStreaming = false;
+        }
+        return newMessages;
+      });
+      
+    } catch (error) {
+      console.error('Error calling API:', error);
+      
+      // Show error message
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage?.sender === 'ai' && lastMessage.isStreaming) {
+          const apiUrl = getApiUrl();
+          lastMessage.text = `**Error:** ${error instanceof Error ? error.message : 'Failed to get response from server'}\n\nPlease check that the backend is running at ${apiUrl}`;
+          lastMessage.isStreaming = false;
+        }
+        return newMessages;
+      });
+    } finally {
+      setIsLoading(false);
+      setIsStreaming(false);
+    }
   };
 
   const clearChat = () => {
     setMessages([]);
     setSelectedFiles([]);
+    // Note: session_id persists in localStorage
+    // It only changes when the page is reloaded
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {

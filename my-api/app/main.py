@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.api.routes import health
+from app.api.routes import health, coding_agent
 
 # Initialize logger
 logger = get_logger()
@@ -31,6 +31,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, prefix=settings.API_V1_PREFIX)
+app.include_router(coding_agent.router, prefix=settings.API_V1_PREFIX)
 
 
 @app.on_event("startup")

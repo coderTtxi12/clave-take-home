@@ -11,8 +11,13 @@ export const useTheme = (): UseThemeReturn => {
   useEffect(() => {
     setMounted(true);
     const savedTheme = localStorage.getItem('theme') as 'dark' | 'light';
+    // Si no hay tema guardado, usar 'dark' por defecto
     if (savedTheme) {
       setTheme(savedTheme);
+    } else {
+      // Establecer 'dark' como predeterminado si no hay tema guardado
+      setTheme('dark');
+      localStorage.setItem('theme', 'dark');
     }
   }, []);
 

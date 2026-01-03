@@ -7,6 +7,7 @@ export const TypingIndicator: React.FC = () => {
   return (
     <div className={`${styles.message} ${styles.ai}`}>
       <div className={styles.messageContent}>
+        <div className={styles.planningText}>Planning</div>
         <div className={styles.typingIndicator}>
           <span></span>
           <span></span>

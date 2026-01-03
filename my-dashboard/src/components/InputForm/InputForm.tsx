@@ -73,14 +73,6 @@ export const InputForm: React.FC<InputFormProps> = ({
         accept="*/*"
       />
       <div className={styles.inputContainer}>
-        <button 
-          type="button" 
-          className={styles.attachButton}
-          onClick={onOpenFileDialog}
-          title="Attach files"
-        >
-          <span className="material-icons">attach_file</span>
-        </button>
         <textarea
           ref={(el) => {
             if (inputRef) inputRef.current = el;
