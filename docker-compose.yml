@@ -1,0 +1,148 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: restaurant_analytics_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-restaurant_analytics}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./my-api/migrations:/migrations:ro
+      - ./my-api/sql:/sql:ro
+      - ./my-api/sql/create_readonly_user.sql:/docker-entrypoint-initdb.d/99-create_readonly_user.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d restaurant_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - restaurant_analytics_network
+
+  # Redis for session management
+  redis:
+    image: redis:7-alpine
+    container_name: coding_agent_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - restaurant_analytics_network
+
+  # Code Executor Service (isolated code execution)
+  code-executor:
+    build:
+      context: ./my-api/code-executor
+      dockerfile: Dockerfile
+    container_name: code_executor_service
+    ports:
+      - "8001:8001"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-restaurant_analytics}
+      DB_USER: code_executor_readonly
+      DB_PASSWORD: readonly_secure_password
+    volumes:
+      - ./my-api/outputs:/app/data/outputs:rw
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - restaurant_analytics_network
+
+  # Backend API
+  api:
+    build:
+      context: ./my-api
+      dockerfile: Dockerfile
+    container_name: restaurant_analytics_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Database Configuration
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-restaurant_analytics}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-restaurant_analytics}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      # Code Executor Configuration
+      CODE_EXECUTOR_URL: http://code-executor:8001
+      # Server Configuration
+      HOST: 0.0.0.0
+      PORT: 8000
+      DEBUG: ${DEBUG:-false}
+      # CORS Configuration (comma-separated or JSON array)
+      ALLOWED_ORIGINS: http://localhost:3000,http://dashboard:3000
+    volumes:
+      - ./my-api/outputs:/app/outputs:rw
+      - ./data:/app/data:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      code-executor:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - restaurant_analytics_network
+
+  # Frontend Dashboard
+  dashboard:
+    build:
+      context: ./my-dashboard
+      dockerfile: Dockerfile
+    container_name: restaurant_analytics_dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NODE_ENV: production
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - restaurant_analytics_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  restaurant_analytics_network:
+    driver: bridge
+

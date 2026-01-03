@@ -29,7 +29,14 @@ def load_all_data(clear_existing: bool = False):
     start_time = datetime.now()
     
     # Define data paths
-    base_path = Path(__file__).parent.parent.parent / 'data' / 'sources'
+    # In Docker, data is mounted at /app/data (from ./data on host)
+    # Check Docker mount path first, then fall back to relative path
+    docker_data_path = Path('/app/data/sources')
+    if docker_data_path.exists():
+        base_path = docker_data_path
+    else:
+        # Fall back to relative path (for local execution outside Docker)
+        base_path = Path(__file__).parent.parent.parent / 'data' / 'sources'
     toast_path = base_path / 'toast_pos_export.json'
     doordash_path = base_path / 'doordash_orders.json'
     square_path = base_path / 'square'

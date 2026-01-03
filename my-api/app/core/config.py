@@ -2,8 +2,10 @@
 Application configuration using Pydantic Settings
 """
 from pydantic_settings import BaseSettings
-from typing import Optional
+from pydantic import field_validator
+from typing import Optional, Union
 from pathlib import Path
+import json
 
 
 class Settings(BaseSettings):
@@ -24,7 +26,22 @@ class Settings(BaseSettings):
     RELOAD: bool = False
     
     # CORS Configuration
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001"]
+    ALLOWED_ORIGINS: Union[list[str], str] = ["http://localhost:3000", "http://localhost:3001"]
+    
+    @field_validator('ALLOWED_ORIGINS', mode='before')
+    @classmethod
+    def parse_allowed_origins(cls, v):
+        """Parse ALLOWED_ORIGINS from string (JSON or comma-separated) to list"""
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            # Try JSON first
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                # Fall back to comma-separated
+                return [origin.strip() for origin in v.split(',') if origin.strip()]
+        return v
     
     # Database Configuration (Supabase)
     SUPABASE_URL: Optional[str] = None

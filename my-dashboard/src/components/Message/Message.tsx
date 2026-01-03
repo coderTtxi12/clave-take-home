@@ -227,9 +227,12 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
     pre({ children }: any) {
       return <div className={styles.codeWrapper}>{children}</div>;
     },
-    img: ({ src, alt }: { src?: string; alt?: string }) => (
-      <ChartImageRenderer src={src} alt={alt} />
-    ),
+    img: (props: any) => {
+      const { src, alt } = props;
+      // Convert src to string if it's a Blob
+      const srcString = typeof src === 'string' ? src : src?.toString() || '';
+      return <ChartImageRenderer src={srcString} alt={alt} />;
+    },
   }), []);
 
   return (
