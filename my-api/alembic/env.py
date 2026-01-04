@@ -11,9 +11,12 @@ from alembic import context
 
 # Load environment variables from .env file in project root
 # alembic/ is in my-api/alembic/, so we go up 2 levels to reach project root
+# Use override=False to NOT override existing environment variables (from Docker, etc.)
+# This ensures Docker container env vars take precedence over .env file
 project_root = Path(__file__).parent.parent.parent
 env_path = project_root / ".env"
-load_dotenv(dotenv_path=env_path)
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=False)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -31,7 +34,16 @@ target_metadata = Base.metadata
 
 # Override sqlalchemy.url from environment variables if present
 # Prefer Supabase configuration if available, otherwise use local PostgreSQL
-supabase_db_host = os.getenv("SUPABASE_DB_HOST")
+# If DB_HOST is explicitly set to 'postgres' (Docker service name), use local DB
+# This ensures Docker container configuration takes precedence
+db_host_env = os.getenv("DB_HOST")
+if db_host_env == "postgres":
+    # We're in Docker with local PostgreSQL, ignore Supabase config
+    supabase_db_host = None
+else:
+    # Check for Supabase configuration
+    supabase_db_host = os.getenv("SUPABASE_DB_HOST")
+
 if supabase_db_host:
     # Use Supabase configuration
     # Supabase default database name is 'postgres', not 'restaurant_analytics'
