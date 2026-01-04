@@ -9,6 +9,7 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import pandas as pd
+import socket
 from typing import Optional
 
 # Database connection parameters from environment
@@ -49,7 +50,31 @@ def get_db_connection():
         This connection uses a read-only user.
         Only SELECT queries are permitted.
     """
-    return psycopg2.connect(**DB_CONFIG)
+    config = DB_CONFIG.copy()
+    
+    # Force IPv4 for external hosts (like Supabase) to avoid IPv6 issues
+    # For Docker service names (like 'postgres'), keep as-is since Docker handles resolution
+    host = config.get('host', 'localhost')
+    
+    # Only resolve to IPv4 if:
+    # 1. It's not already an IP address
+    # 2. It's not a Docker service name (common ones: postgres, redis, api, etc.)
+    # 3. It looks like an external hostname (contains dots, not a simple name)
+    is_ip = host.replace('.', '').isdigit()
+    is_docker_service = host in ['postgres', 'redis', 'api', 'code-executor', 'dashboard']
+    is_external_host = '.' in host and not is_ip
+    
+    if is_external_host and not is_docker_service:
+        try:
+            # Resolve external hostname to IPv4 only (prevents IPv6 connection issues)
+            ipv4 = socket.gethostbyname(host)
+            config['host'] = ipv4
+        except socket.gaierror:
+            # If resolution fails, keep original hostname (psycopg2 will try to connect anyway)
+            pass
+    
+    # For Docker service names or IPs, use as-is
+    return psycopg2.connect(**config)
 
 
 def query_db(sql: str, params: Optional[tuple] = None) -> pd.DataFrame:
