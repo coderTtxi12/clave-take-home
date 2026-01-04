@@ -8,12 +8,15 @@ from pathlib import Path
 import json
 import os
 
+# Calculate BASE_DIR before class definition (needed for Config.env_file)
+_BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 
 class Settings(BaseSettings):
     """Application settings with validation"""
     
     # Base directory
-    BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
+    BASE_DIR: Path = _BASE_DIR
     
     # API Configuration
     APP_NAME: str = "Data Analyst Agent API"
@@ -115,7 +118,7 @@ class Settings(BaseSettings):
     
     class Config:
         # Look for .env in project root (one level up from my-api/)
-        env_file = str(BASE_DIR.parent / ".env")
+        env_file = str(_BASE_DIR.parent / ".env")
         case_sensitive = True
 
 
