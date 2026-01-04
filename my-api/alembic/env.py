@@ -1,5 +1,7 @@
 from logging.config import fileConfig
 import os
+from pathlib import Path
+from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
 from sqlalchemy import engine_from_config
@@ -7,8 +9,11 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file in project root
+# alembic/ is in my-api/alembic/, so we go up 2 levels to reach project root
+project_root = Path(__file__).parent.parent.parent
+env_path = project_root / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -25,14 +30,34 @@ from app.models.database import Base
 target_metadata = Base.metadata
 
 # Override sqlalchemy.url from environment variables if present
-db_host = os.getenv("DB_HOST", "localhost")
-db_port = os.getenv("DB_PORT", "5433")
-db_name = os.getenv("POSTGRES_DB", os.getenv("DB_NAME", "restaurant_analytics"))
-db_user = os.getenv("POSTGRES_USER", os.getenv("DB_USER", "postgres"))
-db_password = os.getenv("POSTGRES_PASSWORD", os.getenv("DB_PASSWORD", "postgres"))
+# Prefer Supabase configuration if available, otherwise use local PostgreSQL
+supabase_db_host = os.getenv("SUPABASE_DB_HOST")
+if supabase_db_host:
+    # Use Supabase configuration
+    # Supabase default database name is 'postgres', not 'restaurant_analytics'
+    db_host = supabase_db_host
+    db_port = os.getenv("SUPABASE_DB_PORT", "5432")
+    db_name = os.getenv("SUPABASE_DB_NAME", os.getenv("DB_NAME", "postgres"))
+    db_user = os.getenv("SUPABASE_DB_USER", os.getenv("DB_USER", "postgres"))
+    db_password = os.getenv("SUPABASE_DB_PASSWORD", os.getenv("DB_PASSWORD", ""))
+    if not db_password:
+        raise ValueError("SUPABASE_DB_PASSWORD must be set when using Supabase")
+else:
+    # Use local PostgreSQL configuration
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "5433")
+    db_name = os.getenv("POSTGRES_DB", os.getenv("DB_NAME", "restaurant_analytics"))
+    db_user = os.getenv("POSTGRES_USER", os.getenv("DB_USER", "postgres"))
+    db_password = os.getenv("POSTGRES_PASSWORD", os.getenv("DB_PASSWORD", "postgres"))
 
-database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-config.set_main_option("sqlalchemy.url", database_url)
+# URL-encode password to handle special characters like @, #, /, etc.
+encoded_password = quote_plus(db_password)
+database_url = f"postgresql://{db_user}:{encoded_password}@{db_host}:{db_port}/{db_name}"
+
+# Set the database URL directly, escaping % for ConfigParser
+# ConfigParser interprets % as interpolation, so we need to double them
+escaped_url = database_url.replace('%', '%%')
+config.set_main_option("sqlalchemy.url", escaped_url)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

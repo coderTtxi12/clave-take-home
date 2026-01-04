@@ -18,27 +18,76 @@ echo ""
 # Activar virtual environment si existe
 if [ -d ".venv" ]; then
     source .venv/bin/activate
+elif [ -d "../.venv" ]; then
+    # También buscar en la raíz del proyecto
+    source ../.venv/bin/activate
 fi
 
-# Cargar variables de entorno desde .env
-if [ -f ".env" ]; then
-    export $(cat .env | grep -v '^#' | xargs)
+# Verificar que alembic esté instalado
+if ! command -v alembic &> /dev/null; then
+    echo -e "${YELLOW}⚠${NC}  alembic not found. Installing dependencies..."
+    if [ -f "requirements.txt" ]; then
+        pip install -q alembic sqlalchemy psycopg2-binary python-dotenv || pip3 install -q alembic sqlalchemy psycopg2-binary python-dotenv
+    else
+        echo -e "${RED}ERROR: requirements.txt not found and alembic is not installed${NC}"
+        echo -e "${YELLOW}Please install dependencies: pip install -r requirements.txt${NC}"
+        exit 1
+    fi
+fi
+
+# Get the project root directory (one level up from my-api/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$PROJECT_ROOT/.env"
+
+# Cargar variables de entorno desde .env en la raíz del proyecto
+# Solo exporta líneas que son variables válidas (KEY=VALUE)
+if [ -f "$ENV_FILE" ]; then
+    # Use source with set -a to export variables safely
+    # This only processes lines that match KEY=VALUE pattern
+    set -a
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip comments and empty lines
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${line// }" ]] && continue
+        # Only process lines that look like KEY=VALUE
+        if [[ "$line" =~ ^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*= ]]; then
+            eval "export $line" 2>/dev/null || true
+        fi
+    done < "$ENV_FILE"
+    set +a
 fi
 
 # Set default database connection
-export POSTGRES_USER=${POSTGRES_USER:-postgres}
-export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-export POSTGRES_DB=${POSTGRES_DB:-restaurant_analytics}
-export DB_HOST=${DB_HOST:-localhost}
-export DB_PORT=${DB_PORT:-5433}
-
-# Check if database is running
-echo -e "${YELLOW}Checking database connection...${NC}"
-if ! pg_isready -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER > /dev/null 2>&1; then
-    echo -e "${YELLOW}Warning: Cannot connect to database. Starting docker-compose...${NC}"
-    docker-compose up -d
-    echo "Waiting for PostgreSQL..."
-    sleep 5
+# Prefer Supabase if configured, otherwise use local PostgreSQL
+if [ -n "$SUPABASE_DB_HOST" ]; then
+    echo -e "${YELLOW}Using Supabase database configuration...${NC}"
+    export DB_HOST=${SUPABASE_DB_HOST}
+    export DB_PORT=${SUPABASE_DB_PORT:-5432}
+    export DB_NAME=${SUPABASE_DB_NAME:-postgres}
+    export DB_USER=${SUPABASE_DB_USER:-postgres}
+    export DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+    DB_USER_FOR_CHECK=$DB_USER
+else
+    echo -e "${YELLOW}Using local PostgreSQL configuration...${NC}"
+    export POSTGRES_USER=${POSTGRES_USER:-postgres}
+    export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    export POSTGRES_DB=${POSTGRES_DB:-restaurant_analytics}
+    export DB_HOST=${DB_HOST:-localhost}
+    export DB_PORT=${DB_PORT:-5433}
+    export DB_NAME=${DB_NAME:-$POSTGRES_DB}
+    export DB_USER=${DB_USER:-$POSTGRES_USER}
+    export DB_PASSWORD=${DB_PASSWORD:-$POSTGRES_PASSWORD}
+    DB_USER_FOR_CHECK=$POSTGRES_USER
+    
+    # Check if local database is running (only for local, not Supabase)
+    echo -e "${YELLOW}Checking database connection...${NC}"
+    if ! pg_isready -h $DB_HOST -p $DB_PORT -U $DB_USER_FOR_CHECK > /dev/null 2>&1; then
+        echo -e "${YELLOW}Warning: Cannot connect to database. Starting docker-compose...${NC}"
+        docker-compose up -d postgres
+        echo "Waiting for PostgreSQL..."
+        sleep 5
+    fi
 fi
 
 # Run alembic command

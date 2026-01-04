@@ -14,8 +14,9 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # Load environment variables from .env file
-# Look for .env in the parent directory (my-api/) since scripts are in my-api/scripts/
-env_path = Path(__file__).parent.parent / '.env'
+# Look for .env in the project root (two levels up from my-api/scripts/)
+# Project structure: project_root/.env, project_root/my-api/scripts/etl_utils.py
+env_path = Path(__file__).parent.parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
 
@@ -27,13 +28,33 @@ class DatabaseConnection:
         self.cur: Optional[psycopg2.extensions.cursor] = None
         
     def connect(self):
-        """Connect to PostgreSQL database"""
+        """Connect to PostgreSQL database (Supabase or local)"""
+        # Prefer Supabase configuration if available
+        supabase_db_host = os.getenv('SUPABASE_DB_HOST')
+        if supabase_db_host:
+            db_host = supabase_db_host
+            db_port = os.getenv('SUPABASE_DB_PORT', '5432')
+            # Supabase default database name is 'postgres'
+            db_name = os.getenv('SUPABASE_DB_NAME', os.getenv('DB_NAME', 'postgres'))
+            db_user = os.getenv('SUPABASE_DB_USER', os.getenv('DB_USER', 'postgres'))
+            db_password = os.getenv('SUPABASE_DB_PASSWORD', os.getenv('DB_PASSWORD', ''))
+            if not db_password:
+                raise ValueError("SUPABASE_DB_PASSWORD must be set when using Supabase")
+            print(f"✓ Connecting to Supabase database: {db_name}@{db_host}:{db_port}")
+        else:
+            db_host = os.getenv('DB_HOST', 'localhost')
+            db_port = os.getenv('DB_PORT', '5433')  # Default to Docker port
+            db_name = os.getenv('DB_NAME', os.getenv('POSTGRES_DB', 'restaurant_analytics'))
+            db_user = os.getenv('DB_USER', os.getenv('POSTGRES_USER', 'postgres'))
+            db_password = os.getenv('DB_PASSWORD', os.getenv('POSTGRES_PASSWORD', 'postgres'))
+            print(f"✓ Connecting to local database: {db_name}@{db_host}:{db_port}")
+        
         self.conn = psycopg2.connect(
-            host=os.getenv('DB_HOST', 'localhost'),
-            port=os.getenv('DB_PORT', '5433'),  # Default to Docker port
-            database=os.getenv('DB_NAME', os.getenv('POSTGRES_DB', 'restaurant_analytics')),
-            user=os.getenv('DB_USER', os.getenv('POSTGRES_USER', 'postgres')),
-            password=os.getenv('DB_PASSWORD', os.getenv('POSTGRES_PASSWORD', 'postgres'))
+            host=db_host,
+            port=db_port,
+            database=db_name,
+            user=db_user,
+            password=db_password
         )
         self.cur = self.conn.cursor(cursor_factory=RealDictCursor)  # type: ignore
         print(f"✓ Connected to database: {self.conn.get_dsn_parameters()['dbname']}")

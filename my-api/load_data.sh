@@ -25,57 +25,106 @@ fi
 
 echo -e "${GREEN}✓${NC} Python 3 found: $(python3 --version)"
 
-# Check if PostgreSQL is running
-echo ""
-echo "Checking PostgreSQL..."
-if ! docker-compose ps | grep -q "postgres.*Up"; then
-    echo -e "${YELLOW}⚠${NC}  PostgreSQL is not running"
-    echo "Starting PostgreSQL..."
-    docker-compose up -d postgres
-    echo "Waiting for PostgreSQL to be ready..."
-    sleep 5
-fi
+# Get the project root directory (one level up from my-api/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$PROJECT_ROOT/.env"
 
-echo -e "${GREEN}✓${NC} PostgreSQL is running"
-
-# Check if migrations have been run
-echo ""
-echo "Checking database schema..."
-if ! docker-compose exec -T postgres psql -U postgres -d restaurant_analytics -c "SELECT 1 FROM locations LIMIT 1;" &> /dev/null; then
-    echo -e "${YELLOW}⚠${NC}  Database schema not found"
-    echo "Running migrations..."
-    ./run_migrations.sh
-else
-    echo -e "${GREEN}✓${NC} Database schema exists"
-fi
-
-# Check if ETL functions are installed
-echo ""
-echo "Checking ETL functions..."
-if ! docker-compose exec -T postgres psql -U postgres -d restaurant_analytics -c "SELECT 1 FROM pg_proc WHERE proname = 'get_or_create_category';" &> /dev/null | grep -q "1 row"; then
-    echo -e "${YELLOW}⚠${NC}  ETL functions not found"
-    echo "Installing ETL functions..."
-    ./install_etl_functions.sh
-else
-    echo -e "${GREEN}✓${NC} ETL functions installed"
-fi
-
-# Load environment variables from .env file if it exists
-if [ -f ".env" ]; then
+# Load environment variables from .env file in project root if it exists
+if [ -f "$ENV_FILE" ]; then
     echo ""
-    echo "Loading environment variables from .env file..."
+    echo "Loading environment variables from $ENV_FILE..."
     set -a  # Automatically export all variables
-    source .env
+    source "$ENV_FILE"
     set +a  # Stop automatically exporting
     echo -e "${GREEN}✓${NC} Environment variables loaded from .env"
 else
     echo ""
-    echo -e "${YELLOW}⚠${NC}  No .env file found, using defaults"
+    echo -e "${YELLOW}⚠${NC}  No .env file found at $ENV_FILE, using defaults"
     export DB_HOST=localhost
     export DB_PORT=5433
     export DB_NAME=restaurant_analytics
     export DB_USER=postgres
     export DB_PASSWORD=postgres
+fi
+
+# Determine if using Supabase or local PostgreSQL
+if [ -n "$SUPABASE_DB_HOST" ]; then
+    echo ""
+    echo -e "${GREEN}✓${NC} Using Supabase database: $SUPABASE_DB_HOST"
+    export DB_HOST=${SUPABASE_DB_HOST}
+    export DB_PORT=${SUPABASE_DB_PORT:-5432}
+    export DB_NAME=${SUPABASE_DB_NAME:-postgres}
+    export DB_USER=${SUPABASE_DB_USER:-postgres}
+    export DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+    USE_SUPABASE=true
+else
+    echo ""
+    echo -e "${GREEN}✓${NC} Using local PostgreSQL database"
+    # Set defaults for local PostgreSQL
+    export DB_HOST=${DB_HOST:-localhost}
+    export DB_PORT=${DB_PORT:-5433}
+    export DB_NAME=${DB_NAME:-${POSTGRES_DB:-restaurant_analytics}}
+    export DB_USER=${DB_USER:-${POSTGRES_USER:-postgres}}
+    export DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres}}
+    USE_SUPABASE=false
+    
+    # Check if local PostgreSQL is running
+    echo ""
+    echo "Checking PostgreSQL..."
+    if ! docker-compose ps | grep -q "postgres.*Up"; then
+        echo -e "${YELLOW}⚠${NC}  PostgreSQL is not running"
+        echo "Starting PostgreSQL..."
+        docker-compose up -d postgres
+        echo "Waiting for PostgreSQL to be ready..."
+        sleep 5
+    fi
+    echo -e "${GREEN}✓${NC} PostgreSQL is running"
+fi
+
+# Check if migrations have been run
+echo ""
+echo "Checking database schema..."
+if [ "$USE_SUPABASE" = true ]; then
+    # For Supabase, use psql directly if available, or skip check
+    if command -v psql &> /dev/null; then
+        if ! PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "SELECT 1 FROM locations LIMIT 1;" &> /dev/null; then
+            echo -e "${YELLOW}⚠${NC}  Database schema not found"
+            echo "Running migrations..."
+            ./run_alembic_migrations.sh upgrade head
+        else
+            echo -e "${GREEN}✓${NC} Database schema exists"
+        fi
+    else
+        echo -e "${YELLOW}⚠${NC}  psql not found, skipping schema check"
+        echo "Make sure to run migrations: ./run_alembic_migrations.sh upgrade head"
+    fi
+else
+    # For local PostgreSQL, use docker-compose
+    if ! docker-compose exec -T postgres psql -U postgres -d restaurant_analytics -c "SELECT 1 FROM locations LIMIT 1;" &> /dev/null; then
+        echo -e "${YELLOW}⚠${NC}  Database schema not found"
+        echo "Running migrations..."
+        ./run_alembic_migrations.sh upgrade head
+    else
+        echo -e "${GREEN}✓${NC} Database schema exists"
+    fi
+fi
+
+# Check if ETL functions are installed (only for local, Supabase may have different setup)
+if [ "$USE_SUPABASE" = false ]; then
+    echo ""
+    echo "Checking ETL functions..."
+    if ! docker-compose exec -T postgres psql -U postgres -d restaurant_analytics -c "SELECT 1 FROM pg_proc WHERE proname = 'get_or_create_category';" &> /dev/null | grep -q "1 row"; then
+        echo -e "${YELLOW}⚠${NC}  ETL functions not found"
+        echo "Installing ETL functions..."
+        ./install_etl_functions.sh
+    else
+        echo -e "${GREEN}✓${NC} ETL functions installed"
+    fi
+else
+    echo ""
+    echo -e "${YELLOW}⚠${NC}  ETL functions check skipped for Supabase"
+    echo "Make sure ETL functions are installed in Supabase if needed"
 fi
 
 # Activate virtual environment if it exists

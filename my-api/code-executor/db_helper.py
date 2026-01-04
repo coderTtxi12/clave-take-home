@@ -12,14 +12,30 @@ import pandas as pd
 from typing import Optional
 
 # Database connection parameters from environment
-# Uses READ-ONLY user: code_executor_readonly
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'postgres'),
-    'port': int(os.getenv('DB_PORT', '5432')),
-    'database': os.getenv('DB_NAME', 'restaurant_analytics'),
-    'user': os.getenv('DB_USER', 'code_executor_readonly'),  # READ-ONLY user
-    'password': os.getenv('DB_PASSWORD', 'readonly_secure_password'),
-}
+# Prefers Supabase if configured, otherwise uses local PostgreSQL
+# For Supabase, uses the main user (read-only can be configured via RLS policies)
+# For local, uses READ-ONLY user: code_executor_readonly
+def get_db_config():
+    """Get database configuration, preferring Supabase if configured"""
+    supabase_host = os.getenv('SUPABASE_DB_HOST')
+    if supabase_host:
+        return {
+            'host': supabase_host,
+            'port': int(os.getenv('SUPABASE_DB_PORT', '5432')),
+            'database': os.getenv('SUPABASE_DB_NAME', os.getenv('DB_NAME', 'postgres')),
+            'user': os.getenv('SUPABASE_DB_USER', os.getenv('DB_USER', 'postgres')),
+            'password': os.getenv('SUPABASE_DB_PASSWORD', os.getenv('DB_PASSWORD', 'postgres')),
+        }
+    else:
+        return {
+            'host': os.getenv('DB_HOST', 'postgres'),
+            'port': int(os.getenv('DB_PORT', '5432')),
+            'database': os.getenv('DB_NAME', 'restaurant_analytics'),
+            'user': os.getenv('DB_USER', 'code_executor_readonly'),  # READ-ONLY user
+            'password': os.getenv('DB_PASSWORD', 'readonly_secure_password'),
+        }
+
+DB_CONFIG = get_db_config()
 
 
 def get_db_connection():
