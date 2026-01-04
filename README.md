@@ -16,6 +16,14 @@ You can test the full functionality including:
 - Data analysis from restaurant analytics
 - Interactive dashboard features
 
+### 🎥 [**📹 Watch Video Demo - See the System in Action!**](https://www.loom.com/share/bc2633b33b2d4b648605fb7b9cc01ff7)
+
+**👀 Quick 2-minute walkthrough showing:**
+- Real-time natural language query processing
+- Dynamic visualization generation
+- The agentic coding loop in action
+- Complete user experience flow
+
 ---
 
 ## 🎯 Overview
