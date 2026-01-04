@@ -2,6 +2,198 @@
 
 PostgreSQL database for restaurant analytics. Unified schema from multiple POS sources (Toast, DoorDash, Square).
 
+---
+
+## 📊 Database Schema Overview & Normalization Process
+
+### The Challenge: Unifying Three Different POS Systems
+
+This database consolidates data from **three distinct POS systems** (Toast, DoorDash, Square), each with:
+- **Different data structures**: Toast uses nested JSON, Square splits data across 4 files, DoorDash has delivery-specific fields
+- **Inconsistent naming**: Same products named differently ("Hash Browns" vs "Hashbrowns", "🍔 Burgers" vs "Burgers")
+- **Different identifiers**: Each system uses its own location/product IDs
+- **Data quality issues**: Typos ("Griled Chiken", "expresso"), missing fields, format variations
+
+### How the Unified Schema Was Designed
+
+The schema design followed a **normalized relational model** approach:
+
+1. **Core Entities Identified**: Locations, Products, Categories, Orders, Payments
+2. **Source-Agnostic Design**: Created generic tables that can represent data from any POS system
+3. **Mapping Strategy**: Used `product_mappings` and `source_ids` JSONB fields to maintain source-specific IDs while having unified records
+4. **Denormalization for Performance**: Added `order_items.item_name` and `order_items.category_name` to preserve historical data even if products change
+
+### Data Normalization Process
+
+The normalization happens in **multiple layers**:
+
+#### 1. **Python ETL Scripts** (`my-api/scripts/`)
+
+**Key Scripts:**
+- `load_all_data.py` - Master orchestrator that loads all sources
+- `load_toast_data.py` - Handles Toast POS nested JSON structure
+- `load_doordash_data.py` - Processes DoorDash delivery-specific data
+- `load_square_data.py` - Merges Square's 4 separate files (catalog, locations, orders, payments)
+- `etl_utils.py` - **Core normalization utilities**
+
+**Normalization Functions in `etl_utils.py`:**
+
+```python
+DataNormalizer.normalize_name(name)
+# - Lowercases text
+# - Removes emojis and special characters
+# - Normalizes whitespace
+# Example: "🍔 Burgers" → "burgers"
+
+DataNormalizer.clean_product_name(name)
+# - Fixes common typos (Griled → Grilled, Chiken → Chicken)
+# - Title cases properly
+# Example: "Griled Chiken Sandwich" → "Grilled Chicken Sandwich"
+
+DataNormalizer.normalize_product_base_name(name)
+# - Removes size variations ("Large", "Small", "Medium")
+# - Removes style/flavor variations ("Chocolate", "Vanilla")
+# - Removes quantity indicators ("12Pc", "6 pieces")
+# - Unifies product variations:
+#   - "French Fries - Large" → "French Fries"
+#   - "Truffle Fries" → "French Fries" (style variation)
+#   - "Wings 12Pc" → "Buffalo Wings"
+#   - "Hashbrowns" → "Hash Browns"
+```
+
+#### 2. **PostgreSQL Functions** (`my-api/sql/etl_functions.sql`)
+
+**Key Functions:**
+
+```sql
+get_or_create_category(category_name)
+# - Normalizes category names (removes emojis, fixes typos)
+# - Handles synonyms ("Drinks" → "Beverages", "Sides" → "Appetizers")
+# - Creates or retrieves category with normalized name
+# - Stores all source variants in source_names JSONB
+
+get_location_id_by_source(source, source_id)
+# - Maps source-specific location IDs to unified location records
+# - Uses JSONB source_ids field for flexible lookup
+```
+
+#### 3. **Fuzzy Matching** (PostgreSQL `pg_trgm` extension)
+
+- **Trigram indexes** on product names enable fuzzy text search
+- Handles spelling variations and typos
+- Used when matching products across sources
+
+### Normalization Flow Example
+
+**Input (3 different sources):**
+- Toast: `"Hashbrowns"` (category: `"🍔 Breakfast"`)
+- Square: `"Hash Browns - Large"` (category: `"Breakfast Items"`)
+- DoorDash: `"Hash Browns"` (category: `"Sides"`)
+
+**Normalization Steps:**
+
+1. **Product Name Normalization:**
+   - `"Hashbrowns"` → `"Hash Browns"` (spelling fix)
+   - `"Hash Browns - Large"` → `"Hash Browns"` (size removal)
+   - `"Hash Browns"` → `"Hash Browns"` (already normalized)
+
+2. **Category Normalization:**
+   - `"🍔 Breakfast"` → `"Breakfast"` (emoji removal)
+   - `"Breakfast Items"` → `"Breakfast"` (synonym handling)
+   - `"Sides"` → `"Appetizers"` (synonym mapping)
+
+3. **Result:**
+   - All three map to same `products` record: `name="Hash Browns"`, `normalized_name="hash browns"`
+   - Category: `"Breakfast"` (or `"Appetizers"` depending on business logic)
+   - Three `product_mappings` records link source-specific IDs to unified product
+
+### Database Relationship Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         DATABASE RELATIONSHIPS                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────┐
+│  locations  │ (1)
+│  (id, name) │
+└──────┬──────┘
+       │ 1:N
+       │
+       ▼
+┌─────────────┐
+│   orders    │ (N)
+│  (id, ...)  │
+└──────┬──────┘
+       │
+       ├─── 1:N ───► ┌──────────────┐
+       │             │ order_items   │ (N)
+       │             │ (id, ...)     │
+       │             └───────┬───────┘
+       │                     │
+       │                     ├─── N:1 ───► ┌─────────────┐
+       │                     │             │  products   │ (1)
+       │                     │             │  (id, ...)   │
+       │                     │             └───────┬─────┘
+       │                     │                     │
+       │                     │                     ├─── N:1 ───► ┌──────────────┐
+       │                     │                     │             │  categories  │ (1)
+       │                     │                     │             │  (id, ...)   │
+       │                     │                     │             └──────────────┘
+       │                     │                     │
+       │                     │                     └─── 1:N ───► ┌──────────────────┐
+       │                     │                                   │ product_mappings│ (N)
+       │                     │                                   │  (id, ...)       │
+       │                     │                                   └──────────────────┘
+       │                     │
+       │                     └─── 1:N ───► ┌────────────────────┐
+       │                                   │order_item_modifiers│ (N)
+       │                                   │  (id, ...)         │
+       │                                   └────────────────────┘
+       │
+       ├─── 1:N ───► ┌─────────────┐
+       │             │  payments   │ (N)
+       │             │  (id, ...)  │
+       │             └─────────────┘
+       │
+       ├─── 1:1 ───► ┌─────────────────┐
+       │             │ delivery_orders │ (1)
+       │             │  (id, ...)     │
+       │             └─────────────────┘
+       │
+       └─── 1:N ───► ┌──────────────┐
+                     │ toast_checks │ (N)
+                     │  (id, ...)   │
+                     └──────────────┘
+
+┌──────────────┐
+│  categories  │ (self-reference)
+│  (id, ...)   │
+└───────┬──────┘
+        │
+        └─── 1:N (parent_id) ───► ┌──────────────┐
+                                   │  categories  │ (child)
+                                   │  (id, ...)   │
+                                   └──────────────┘
+
+LEGEND:
+(1) = One
+(N) = Many
+1:N = One-to-Many relationship
+1:1 = One-to-One relationship
+N:1 = Many-to-One relationship (reverse of 1:N)
+```
+
+### Key Design Decisions
+
+1. **JSONB for Flexibility**: `source_ids`, `source_metadata`, `extra_data` use JSONB to store source-specific data without schema changes
+2. **Denormalization**: `order_items.item_name` and `order_items.category_name` preserve historical data even if products are renamed
+3. **CASCADE Deletes**: Related records (order_items, payments, etc.) are automatically deleted when parent (order) is deleted
+4. **Source Mapping**: `product_mappings` table maintains links between unified products and source-specific product IDs
+5. **Location Strategy**: Each physical location can have multiple records (one per source) with different `source_ids`, or a single record with all source IDs in JSONB
+
+---
+
 ## ENUMS
 
 ### OrderSourceEnum

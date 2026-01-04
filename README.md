@@ -2,6 +2,22 @@
 
 A production-ready AI-powered dashboard that transforms natural language queries into dynamic visualizations from restaurant analytics data. Built for the Clave Engineering Take-Home Assessment.
 
+---
+
+## 🚀 Live Application
+
+**The application is live and ready for testing:**
+
+### 🌐 [**http://44.222.146.210:3000/**](http://44.222.146.210:3000/)
+
+You can test the full functionality including:
+- Natural language queries
+- Dynamic chart generation
+- Data analysis from restaurant analytics
+- Interactive dashboard features
+
+---
+
 ## 🎯 Overview
 
 This system allows restaurant owners to ask questions in plain English like:
@@ -12,9 +28,9 @@ This system allows restaurant owners to ask questions in plain English like:
 **The system automatically:**
 1. Parses the natural language query
 2. Generates Python code to query the database
-3. Executes the code in a secure sandbox
-4. Creates appropriate visualizations (charts, tables, metrics)
-5. Returns interactive widgets to the dashboard
+3. Executes the code in a secure environment
+4. Creates dynamic visualizations using Python libraries - the agent can generate **any type of visualization** (bar charts, line graphs, pie charts, heatmaps, scatter plots, tables, metrics, etc.) because it writes and executes custom code
+5. Returns the visualization to the dashboard
 
 ---
 
@@ -251,7 +267,7 @@ The system processes **6 JSON files** from 3 different POS systems:
 
 ### Normalized Schema
 
-We designed a unified schema that handles all sources:
+Designed a unified schema that handles all sources:
 
 ```
 locations (id, name, address, ...)
@@ -295,36 +311,36 @@ locations (id, name, address, ...)
 - Docker & Docker Compose
 - Git
 
-### Quick Start
+### Quick Start (Less than 5 Minutes)
 
 ```bash
 # 1. Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/coderTtxi12/clave-take-home.git
 cd clave-take-home
 
 # 2. Create .env file (copy from .env.example)
 cp .env.example .env
 # Edit .env with your:
-# - Supabase credentials (if using production DB)
 # - OpenAI API key
 
 # 3. Start all services
-docker-compose up -d
+docker compose up -d
 
-# 4. Run database migrations
-cd my-api
-./run_alembic_migrations.sh
+# 4. Run Alembic migrations ✅
+docker exec -it restaurant_analytics_api alembic upgrade head
 
-# 5. Install ETL functions
-./install_etl_functions.sh
+# 5. Create read-only user (if it doesn't exist) ✅
+docker exec -it restaurant_analytics_db psql -U postgres -d restaurant_analytics -f /sql/create_readonly_user.sql
 
-# 6. Load data
-./load_data.sh
+# 6. Install ETL functions ✅
+docker exec -it restaurant_analytics_db psql -U postgres -d restaurant_analytics -f /sql/etl_functions.sql
 
-# 7. Access the application
+# 7. Load data ✅
+docker exec -it restaurant_analytics_api bash -c "cd /app/scripts && python3 load_all_data.py --clear"
+
+# 8. Access the application
 # Frontend: http://localhost:3000
 # API: http://localhost:8000
-# API Docs: http://localhost:8000/docs
 ```
 
 ### Services
@@ -351,55 +367,210 @@ cd my-api
 
 ---
 
+## 📁 Project Structure
+
+```
+clave-take-home/
+├── data/                          # Source data files (JSON from POS systems)
+│   └── sources/
+│       ├── toast_pos_export.json  # Toast POS data
+│       ├── doordash_orders.json   # DoorDash orders
+│       └── square/                # Square POS data (4 files)
+│           ├── catalog.json
+│           ├── locations.json
+│           ├── orders.json
+│           └── payments.json
+│
+├── my-api/                        # Backend API (FastAPI)
+│   ├── app/                       # Main application code
+│   │   ├── api/routes/           # API endpoints
+│   │   │   ├── coding_agent.py   # Main coding agent endpoint
+│   │   │   └── health.py          # Health check endpoint
+│   │   ├── core/                  # Core configuration
+│   │   │   ├── config.py         # Settings and environment variables
+│   │   │   └── logging.py        # Logging configuration
+│   │   ├── models/                # Pydantic models and database models
+│   │   │   ├── coding_agent.py   # Request/response models
+│   │   │   └── database.py       # SQLAlchemy models
+│   │   ├── services/              # Business logic
+│   │   │   ├── coding_agent_service.py  # Agentic loop implementation
+│   │   │   └── session_manager.py        # Redis session management
+│   │   ├── utils/                 # Utility functions
+│   │   │   ├── code_executor.py  # Code execution client
+│   │   │   ├── image_processor.py # Image extraction/processing
+│   │   │   └── tools.py           # Agent tools (execute_code, etc.)
+│   │   └── main.py                # FastAPI application entry point
+│   │
+│   ├── code-executor/             # Isolated code execution service
+│   │   ├── executor.py            # FastAPI service for code execution
+│   │   ├── db_helper.py          # Read-only database connection
+│   │   └── Dockerfile             # Container definition
+│   │
+│   ├── scripts/                    # ETL scripts
+│   │   ├── load_all_data.py       # Master ETL orchestrator
+│   │   ├── load_toast_data.py     # Toast POS ETL
+│   │   ├── load_doordash_data.py  # DoorDash ETL
+│   │   ├── load_square_data.py    # Square POS ETL
+│   │   └── etl_utils.py           # Shared ETL utilities
+│   │
+│   ├── alembic/                   # Database migrations
+│   │   ├── env.py                 # Alembic environment config
+│   │   └── versions/              # Migration files
+│   │
+│   ├── sql/                        # SQL scripts
+│   │   ├── etl_functions.sql      # PostgreSQL functions for ETL
+│   │   └── create_readonly_user.sql  # Read-only user creation
+│   │
+│   ├── prompts/                    # LLM prompts
+│   │   ├── prompts.py             # System prompts for agent
+│   │   └── DB_SCHEMA.md           # Database schema documentation
+│   │
+│   ├── run_alembic_migrations.sh  # Script: Run database migrations
+│   ├── install_etl_functions.sh   # Script: Install PostgreSQL functions
+│   ├── load_data.sh               # Script: Load ETL data
+│   ├── setup_production.sh        # Script: Complete production setup
+│   ├── requirements.txt           # Python dependencies
+│   └── Dockerfile                 # Backend API container
+│
+├── my-dashboard/                   # Frontend (Next.js)
+│   ├── src/
+│   │   ├── app/                   # Next.js App Router
+│   │   │   ├── page.tsx          # Main page component
+│   │   │   ├── layout.tsx        # Root layout
+│   │   │   └── api/              # Next.js API routes (proxy)
+│   │   │       └── coding-agent/query/route.ts
+│   │   ├── components/            # React components
+│   │   │   ├── Header/           # App header with theme toggle
+│   │   │   ├── WelcomeSection/   # Initial welcome screen
+│   │   │   ├── MessageList/      # Active conversation view
+│   │   │   ├── Message/          # Individual message component
+│   │   │   ├── InputForm/        # Chat input form
+│   │   │   ├── FilePreview/      # File attachment preview
+│   │   │   └── TypingIndicator/   # Loading indicator
+│   │   ├── hooks/                 # Custom React hooks
+│   │   │   ├── useChat.ts        # Chat state management
+│   │   │   └── useTheme.ts       # Theme management
+│   │   └── types/                 # TypeScript type definitions
+│   ├── package.json               # Node.js dependencies
+│   ├── next.config.ts             # Next.js configuration
+│   └── Dockerfile                 # Frontend container
+│
+├── docs/                           # Documentation
+│   ├── EXAMPLE_QUERIES.md         # Example natural language queries
+│   └── SCHEMA_HINTS.md            # Database schema hints
+│
+├── docker-compose.yml              # Docker Compose for local development
+├── DB_SCHEMA.md                   # Database schema documentation
+└── README.md                      # This file
+```
+
+---
+
 ## 📝 Key Scripts
 
-### Database Migrations
+### Database Migration Script
+
+**File**: `my-api/run_alembic_migrations.sh`
 
 ```bash
 ./my-api/run_alembic_migrations.sh
 ```
 
 **What it does:**
-- Runs Alembic migrations to create/update schema
-- Handles both local PostgreSQL and Supabase
-- Automatically detects database type from `.env`
+- Runs Alembic migrations to create/update database schema
+- Automatically detects database type (local PostgreSQL or Supabase) from `.env`
+- Handles environment variable loading and validation
+- Installs Python dependencies if missing (alembic, sqlalchemy, psycopg2)
+
+**Usage:**
+- `./run_alembic_migrations.sh upgrade head` - Apply all migrations
+- `./run_alembic_migrations.sh current` - Show current version
+- `./run_alembic_migrations.sh history` - Show migration history
 
 **Why Alembic?**
 - Version control for schema changes
 - Reproducible deployments
 - Rollback capability
+- Team collaboration on schema changes
 
-### ETL Functions Installation
+### ETL Functions Installation Script
+
+**File**: `my-api/install_etl_functions.sh`
 
 ```bash
 ./my-api/install_etl_functions.sh
 ```
 
 **What it does:**
-- Installs PostgreSQL functions for data normalization
-- Functions: `normalize_product_name()`, `calculate_order_totals()`, etc.
+- Installs PostgreSQL functions for data normalization and ETL operations
+- Functions include:
+  - `get_or_create_category()`: Normalize and deduplicate categories
+  - `get_location_id_by_source()`: Map source-specific location IDs
+  - `validate_etl_data()`: Data quality checks
+- Works with both local PostgreSQL and Supabase
+- Uses Docker `psql` if local `psql` is not available
 
 **Why PostgreSQL functions?**
 - **Performance**: Runs close to data (no network overhead)
 - **Consistency**: Same logic for ETL and queries
 - **Reusability**: Can be called from Python or SQL
+- **Data integrity**: Enforced at database level
 
-### Data Loading
+### Data Loading Script
+
+**File**: `my-api/load_data.sh`
 
 ```bash
-./my-api/load_data.sh
+./my-api/load_data.sh [--clear]
 ```
 
 **What it does:**
-1. Parses all 6 JSON files
-2. Cleans and normalizes data
-3. Inserts into database
-4. Validates data integrity
+1. Validates all source JSON files exist
+2. Checks database schema is initialized
+3. Verifies ETL functions are installed
+4. Runs master ETL pipeline (`load_all_data.py`)
+5. Loads data from all sources in correct order:
+   - Toast POS → DoorDash → Square POS
+
+**Options:**
+- `--clear` or `-c`: Deletes all existing data before loading (fresh start)
+- Without flag: Appends data (may create duplicates if re-run)
 
 **ETL Process:**
-- **Toast**: Single file → orders, items, payments
-- **DoorDash**: Orders → normalized format
-- **Square**: 4 files → unified schema
+- **Toast**: Single nested JSON → normalized orders, items, payments
+- **DoorDash**: Delivery orders → unified order format
+- **Square**: 4 separate files → unified schema with referential integrity
+
+### Production Setup Script
+
+**File**: `my-api/setup_production.sh`
+
+```bash
+./my-api/setup_production.sh
+```
+
+**What it does:**
+- Orchestrates complete production setup in one command:
+  1. Runs Alembic migrations
+  2. Creates read-only database user
+  3. Installs ETL functions
+  4. Prompts for data loading (with `--clear` option)
+
+**Features:**
+- Robust error handling with clear messages
+- Automatic dependency installation
+- Works with both local PostgreSQL and Supabase
+- Interactive prompts for data loading confirmation
+
+**Use case**: First-time setup or fresh deployment
+
+### Other Scripts
+
+**`my-api/run_migrations.sh`**: Alternative migration runner (legacy)
+
+**`my-api/TEST_COMMANDS.sh`**: Test commands for development/debugging
+
+**`my-api/run.py`**: Alternative application entry point (development)
 
 ---
 
@@ -497,14 +668,41 @@ cd my-api
 
 ## 🔮 Future Improvements
 
-Given more time, we would:
+Given more time:
 
 1. **Caching**: Cache query results for common questions
 2. **Query Optimization**: Analyze and optimize generated SQL
-3. **Multi-user Support**: User authentication and data isolation
-4. **Advanced Visualizations**: More chart types, custom styling
-5. **Query History**: Save and replay previous queries
-6. **Data Refresh**: Automated ETL pipeline for new data
+3. **Query History**: Save and replay previous queries
+4. **Data Refresh**: Automated ETL pipeline for new data
+5. **Fullstack Agent**: Complete the fullstack agent implementation - a powerful tool that enables users to create any type of data analytics report through natural language, similar to how Lovable works for app development but specialized for data analytics workflows
+
+---
+
+## 📚 More Documentation
+
+For comprehensive details about the database architecture, normalization process, and schema design, see:
+
+### [**Database Schema Reference**](./DB_SCHEMA.md)
+
+This document contains:
+
+- **📊 Database Schema Overview**: Complete explanation of how data from three different POS systems (Toast, DoorDash, Square) is unified into a single normalized schema
+- **🔄 Normalization Process**: Detailed breakdown of the multi-layer normalization approach:
+  - Python ETL scripts (`etl_utils.py`) with normalization functions
+  - PostgreSQL functions (`etl_functions.sql`) for category and location mapping
+  - Fuzzy matching using `pg_trgm` extension
+- **📈 Visual Database Diagram**: ASCII diagram showing all relationships (1:N, 1:1, N:1, self-references)
+- **📋 Complete Table Reference**: Detailed documentation of all tables, columns, relationships, and indexes
+- **🔍 Query Guidance**: Best practices for common query patterns (sales, dates, locations, products, payments)
+- **📝 Important Notes**: CASCADE deletes, triggers, JSONB usage, denormalization strategy
+
+**Key Topics Covered:**
+- How product names are normalized across sources ("Hashbrowns" → "Hash Browns")
+- How categories are unified ("🍔 Burgers" → "Burgers", "Drinks" → "Beverages")
+- Location mapping strategy using JSONB `source_ids`
+- Product mapping table for maintaining source-specific IDs
+- DoorDash merchant payout handling
+- Date/time field usage patterns
 
 ---
 
