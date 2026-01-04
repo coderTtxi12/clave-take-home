@@ -25,9 +25,21 @@ const getSessionId = (): string => {
 };
 
 // API URL from environment (safe for SSR)
+// In production (Vercel), use the Next.js API proxy to avoid Mixed Content issues
 const getApiUrl = (): string => {
   if (typeof window !== 'undefined') {
-    // Client-side: can use environment variable
+    // Client-side: check if we're in production (Vercel)
+    const isProduction = window.location.hostname.includes('vercel.app') || 
+                         window.location.hostname.includes('vercel.com') ||
+                         process.env.NODE_ENV === 'production';
+    
+    if (isProduction) {
+      // Use Next.js API proxy (relative path) to avoid Mixed Content
+      // The proxy will forward to the backend
+      return '';
+    }
+    
+    // Development: use environment variable or localhost
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   }
   // Server-side: default
@@ -96,7 +108,13 @@ export const useChat = (): UseChatReturn => {
     try {
       // Call the backend API
       const apiUrl = getApiUrl();
-      const response = await fetch(`${apiUrl}/api/v1/coding-agent/query`, {
+      // If apiUrl is empty (production), use Next.js API proxy
+      // The proxy route is /api/[...path], so we call /api/v1/coding-agent/query
+      const endpoint = apiUrl 
+        ? `${apiUrl}/api/v1/coding-agent/query`
+        : '/api/v1/coding-agent/query';
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
