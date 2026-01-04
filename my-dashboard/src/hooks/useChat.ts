@@ -29,13 +29,14 @@ const getSessionId = (): string => {
 const getApiUrl = (): string => {
   if (typeof window !== 'undefined') {
     // Client-side: check if we're in production (Vercel)
+    // Always use proxy in production to avoid Mixed Content (HTTPS -> HTTP)
     const isProduction = window.location.hostname.includes('vercel.app') || 
                          window.location.hostname.includes('vercel.com') ||
-                         process.env.NODE_ENV === 'production';
+                         window.location.protocol === 'https:';
     
     if (isProduction) {
       // Use Next.js API proxy (relative path) to avoid Mixed Content
-      // The proxy will forward to the backend
+      // The proxy will forward to the backend using NEXT_PUBLIC_API_URL server-side
       return '';
     }
     
