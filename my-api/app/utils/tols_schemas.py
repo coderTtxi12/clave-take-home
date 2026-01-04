@@ -236,6 +236,32 @@ glob_schema = {
     }
 }
 
+install_packages_schema = {
+    "type": "function",
+    "function": {
+        "name": "install_packages",
+        "description": "Install npm/bun packages in the Next.js project",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "packages": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of package names to install (e.g., ['axios', 'lodash'])",
+                },
+                "package_manager": {
+                    "type": "string",
+                    "enum": ["bun", "npm"],
+                    "description": "Package manager to use. Defaults to 'bun'",
+                    "default": "bun",
+                },
+            },
+            "required": ["packages"],
+            "additionalProperties": False,
+        },
+    }
+}
+
 tools_schemas = [
     execute_code_schema,
     execute_bash_schema,
@@ -245,4 +271,5 @@ tools_schemas = [
     search_file_content_schema,
     replace_in_file_schema,
     glob_schema,
+    install_packages_schema,
 ]

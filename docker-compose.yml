@@ -50,6 +50,7 @@ services:
     container_name: code_executor_service
     ports:
       - "8001:8001"
+      - "3001:3000"  # Next.js dev server
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
