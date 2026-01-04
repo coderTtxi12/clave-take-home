@@ -24,25 +24,11 @@ const getSessionId = (): string => {
   }
 };
 
-// API URL from environment (safe for SSR)
-// In production (Vercel), use the Next.js API proxy to avoid Mixed Content issues
-const getApiUrl = (): string => {
-  if (typeof window !== 'undefined') {
-    // Client-side: check if we're in production (HTTPS)
-    // Always use proxy in production to avoid Mixed Content (HTTPS -> HTTP)
-    const isProduction = window.location.protocol === 'https:';
-    
-    if (isProduction) {
-      // Use Next.js API proxy (relative path) to avoid Mixed Content
-      // The proxy route is /api/coding-agent/query
-      return '';
-    }
-    
-    // Development: use environment variable or localhost
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  }
-  // Server-side: default
-  return 'http://localhost:8000';
+// Always use the Next.js API proxy to avoid Mixed Content issues
+// The proxy handles both production (HTTPS) and development (HTTP) cases
+const getApiEndpoint = (): string => {
+  // Always use the proxy route - no direct backend calls from client
+  return '/api/coding-agent/query';
 };
 
 export const useChat = (): UseChatReturn => {
@@ -105,13 +91,8 @@ export const useChat = (): UseChatReturn => {
     setIsStreaming(true);
 
     try {
-      // Call the backend API
-      const apiUrl = getApiUrl();
-      // If apiUrl is empty (production), use Next.js API proxy
-      // The proxy route is /api/coding-agent/query
-      const endpoint = apiUrl 
-        ? `${apiUrl}/api/v1/coding-agent/query`
-        : '/api/coding-agent/query';
+      // Always use the Next.js API proxy (avoids Mixed Content issues)
+      const endpoint = getApiEndpoint();
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -155,8 +136,7 @@ export const useChat = (): UseChatReturn => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
         if (lastMessage?.sender === 'ai' && lastMessage.isStreaming) {
-          const apiUrl = getApiUrl();
-          lastMessage.text = `**Error:** ${error instanceof Error ? error.message : 'Failed to get response from server'}\n\nPlease check that the backend is running at ${apiUrl}`;
+          lastMessage.text = `**Error:** ${error instanceof Error ? error.message : 'Failed to get response from server'}\n\nPlease check that the backend is running.`;
           lastMessage.isStreaming = false;
         }
         return newMessages;

@@ -7,9 +7,9 @@ import { NextRequest, NextResponse } from 'next/server';
  * This solves the Mixed Content issue where browsers block HTTP requests from HTTPS pages.
  */
 
-// Get backend URL from environment variable
+// Get backend URL from environment variable (server-only, not NEXT_PUBLIC_*)
 const getBackendUrl = (): string => {
-  return process.env.NEXT_PUBLIC_API_URL || 'http://18.206.135.172:8000';
+  return process.env.BACKEND_URL || 'http://18.206.135.172:8000';
 };
 
 export async function POST(req: NextRequest) {
