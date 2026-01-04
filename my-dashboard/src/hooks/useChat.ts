@@ -24,10 +24,10 @@ const getSessionId = (): string => {
   }
 };
 
-// Always use the Next.js API proxy to avoid Mixed Content issues
-// The proxy handles both production (HTTPS) and development (HTTP) cases
+// Always use the Next.js API proxy
+// The proxy runs server-side and can use Docker service names (api:8000)
+// The browser only sees same-origin requests (no IP needed)
 const getApiEndpoint = (): string => {
-  // Always use the proxy route - no direct backend calls from client
   return '/api/coding-agent/query';
 };
 

@@ -8,8 +8,16 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 
 // Get backend URL from environment variable (server-only, not NEXT_PUBLIC_*)
+// In Docker, use the service name (api:8000) for internal communication
+// Otherwise, use the provided BACKEND_URL or fallback to EC2 IP
 const getBackendUrl = (): string => {
-  return process.env.BACKEND_URL || 'http://18.206.135.172:8000';
+  // If BACKEND_URL is set, use it
+  if (process.env.BACKEND_URL) {
+    return process.env.BACKEND_URL;
+  }
+  // In Docker, use the service name (internal Docker network)
+  // This works because the Next.js server runs inside Docker
+  return 'http://api:8000';
 };
 
 export async function POST(req: NextRequest) {

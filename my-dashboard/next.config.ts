@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Removed 'standalone' output - Vercel handles this automatically
-  // output: 'standalone', // Only needed for Docker deployments
+  // Enable standalone output for Docker deployments
+  output: 'standalone',
   
   /* config options here */
   

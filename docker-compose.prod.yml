@@ -91,8 +91,9 @@ services:
       # Environment
       ENVIRONMENT: production
       # CORS Configuration (comma-separated or JSON array)
-      # Include your Vercel frontend URL here
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://your-app.vercel.app,http://localhost:3000}
+      # Allow frontend running on same EC2 instance
+      # Include your EC2 public IP or domain (e.g., http://18.206.135.172:3000)
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://dashboard:3000}
     volumes:
       - ./my-api/outputs:/app/outputs:rw
       - ./data:/app/data:ro
@@ -101,6 +102,25 @@ services:
         condition: service_healthy
       code-executor:
         condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - restaurant_analytics_network
+
+  # Frontend Dashboard
+  dashboard:
+    build:
+      context: ./my-dashboard
+      dockerfile: Dockerfile
+    container_name: restaurant_analytics_dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      # No need for NEXT_PUBLIC_API_URL - we use the proxy which uses Docker service names
+      # The proxy route (/api/coding-agent/query) uses http://api:8000 internally
+      NODE_ENV: production
+    depends_on:
+      api:
+        condition: service_started
     restart: unless-stopped
     networks:
       - restaurant_analytics_network
