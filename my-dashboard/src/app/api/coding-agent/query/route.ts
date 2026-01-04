@@ -1,15 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * API Proxy Route for Coding Agent Query
  * 
- * This route proxies requests from the Next.js frontend (HTTPS) to the backend API (HTTP).
- * This solves the Mixed Content issue where browsers block HTTP requests from HTTPS pages.
+ * This Next.js API route acts as a server-side proxy between the frontend
+ * and the backend API. It solves several issues:
+ * 
+ * 1. Mixed Content: Browsers block HTTP requests from HTTPS pages.
+ *    This proxy allows the frontend to make same-origin requests.
+ * 
+ * 2. Docker Networking: When running in Docker Compose, the Next.js
+ *    server can use Docker service names (api:8000) for internal
+ *    communication, while the browser only sees relative URLs.
+ * 
+ * 3. Security: Backend URLs are not exposed to the client.
+ * 
+ * The route forwards POST requests to the backend API and returns
+ * the response. It also handles CORS preflight requests (OPTIONS).
  */
+import { NextRequest, NextResponse } from 'next/server';
 
-// Get backend URL from environment variable (server-only, not NEXT_PUBLIC_*)
-// In Docker, use the service name (api:8000) for internal communication
-// Otherwise, use the provided BACKEND_URL or fallback to EC2 IP
+/**
+ * Get the backend API URL for proxying requests.
+ * 
+ * Priority:
+ * 1. BACKEND_URL environment variable (if set)
+ * 2. Docker service name 'http://api:8000' (default for Docker Compose)
+ * 
+ * Note: This runs server-side only, so it can use Docker service names
+ * that are not accessible from the browser.
+ * 
+ * @returns Backend API base URL
+ */
 const getBackendUrl = (): string => {
   // If BACKEND_URL is set, use it
   if (process.env.BACKEND_URL) {
@@ -20,6 +40,17 @@ const getBackendUrl = (): string => {
   return 'http://api:8000';
 };
 
+/**
+ * Handle POST requests to the coding agent query endpoint.
+ * 
+ * This function:
+ * 1. Receives the request from the frontend
+ * 2. Forwards it to the backend API
+ * 3. Returns the backend response to the frontend
+ * 
+ * @param req - Next.js request object containing the query and session_id
+ * @returns Next.js response with the backend API result
+ */
 export async function POST(req: NextRequest) {
   try {
     const backendUrl = getBackendUrl();
@@ -55,7 +86,15 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Handle OPTIONS for CORS preflight
+/**
+ * Handle OPTIONS requests for CORS preflight.
+ * 
+ * Browsers send OPTIONS requests before POST requests to check CORS
+ * permissions. This handler allows all origins, methods, and headers
+ * for simplicity (can be restricted in production).
+ * 
+ * @returns Next.js response with CORS headers
+ */
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,

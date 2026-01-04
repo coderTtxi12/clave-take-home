@@ -1,10 +1,38 @@
+/**
+ * Chat Hook for Data Analyst Agent
+ * 
+ * This custom React hook manages the chat interface state and interactions
+ * with the backend API. It handles:
+ * - Message state management
+ * - Session management (generates new session on page load)
+ * - API communication via Next.js proxy route
+ * - File upload handling
+ * - Auto-scrolling to latest message
+ * - Loading and streaming states
+ * 
+ * The hook uses a Next.js API proxy route (/api/coding-agent/query) which
+ * forwards requests to the backend API. This avoids Mixed Content issues
+ * and allows the frontend to use relative URLs.
+ * 
+ * Session Management:
+ * - Generates a new session ID on each page load (not persisted across reloads)
+ * - Session ID is sent with each request for conversation continuity
+ * - Backend stores conversation history in Redis using session ID
+ */
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { Message, UseChatReturn } from '@/types';
 
-// Generate or retrieve session ID from localStorage
-// IMPORTANT: Generate a NEW session_id on each page load
+/**
+ * Generate a new session ID for the current page session.
+ * 
+ * IMPORTANT: This generates a NEW session_id on each page load.
+ * The session ID is not persisted across page reloads, ensuring
+ * a fresh conversation context each time the page is loaded.
+ * 
+ * @returns A unique session ID string
+ */
 const getSessionId = (): string => {
   if (typeof window === 'undefined') return '';
   
@@ -24,13 +52,33 @@ const getSessionId = (): string => {
   }
 };
 
-// Always use the Next.js API proxy
-// The proxy runs server-side and can use Docker service names (api:8000)
-// The browser only sees same-origin requests (no IP needed)
+/**
+ * Get the API endpoint for chat queries.
+ * 
+ * Always uses the Next.js API proxy route which:
+ * - Runs server-side (can use Docker service names)
+ * - Avoids Mixed Content issues (browser sees same-origin requests)
+ * - No need to expose backend IP addresses to the client
+ * 
+ * @returns The API endpoint path
+ */
 const getApiEndpoint = (): string => {
   return '/api/coding-agent/query';
 };
 
+/**
+ * Main chat hook that manages conversation state and API interactions.
+ * 
+ * This hook provides:
+ * - Message list state
+ * - Input value state
+ * - Loading and streaming states
+ * - File selection and management
+ * - Auto-scroll to latest message
+ * - Session ID management
+ * 
+ * @returns Object containing all chat-related state and functions
+ */
 export const useChat = (): UseChatReturn => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');

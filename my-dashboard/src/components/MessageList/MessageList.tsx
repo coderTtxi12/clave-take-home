@@ -1,3 +1,17 @@
+/**
+ * Message List Component
+ * 
+ * This component displays the active chat conversation with:
+ * - Scrollable message list
+ * - Individual message components
+ * - Typing indicator when loading
+ * - Input form at the bottom
+ * - File preview for selected files
+ * - Auto-scroll to latest message (via messagesEndRef)
+ * 
+ * The component is shown when there are messages in the conversation,
+ * replacing the WelcomeSection once the user starts chatting.
+ */
 'use client';
 
 import React from 'react';
@@ -8,6 +22,14 @@ import { InputForm } from '../InputForm/InputForm';
 import { FilePreview } from '../FilePreview/FilePreview';
 import styles from './MessageList.module.css';
 
+/**
+ * Message list component for active conversations.
+ * 
+ * Renders all messages in the conversation, shows typing indicator
+ * when loading, and provides input form for new messages.
+ * 
+ * @param props - MessageListProps containing messages, input state, and handlers
+ */
 export const MessageList: React.FC<MessageListProps> = ({ 
   messages, 
   isLoading, 

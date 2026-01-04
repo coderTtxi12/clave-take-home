@@ -1,3 +1,20 @@
+/**
+ * Main Application Page
+ * 
+ * This is the root page component for the Data Analyst Agent dashboard.
+ * It orchestrates the main UI components and handles drag-and-drop file uploads.
+ * 
+ * Features:
+ * - Theme switching (dark/light mode)
+ * - Chat interface with message history
+ * - File upload via drag-and-drop or file picker
+ * - Welcome screen when no messages exist
+ * - Message list view when conversation is active
+ * 
+ * The page uses the useChat hook for conversation management and the useTheme
+ * hook for theme persistence. It conditionally renders either the WelcomeSection
+ * (empty state) or MessageList (active conversation) based on message count.
+ */
 'use client';
 
 import React, { useState } from 'react';

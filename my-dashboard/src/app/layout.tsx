@@ -1,3 +1,16 @@
+/**
+ * Root Layout Component
+ * 
+ * This is the root layout for the Next.js application. It wraps all pages
+ * and provides:
+ * - Global metadata (title, description)
+ * - HTML structure with theme attribute
+ * - Material Icons font import
+ * - Global CSS styles
+ * 
+ * The layout sets the default theme to 'dark' and ensures consistent
+ * styling across all pages.
+ */
 import type { Metadata } from 'next';
 import './globals.css';
 

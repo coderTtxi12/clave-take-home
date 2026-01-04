@@ -1,3 +1,18 @@
+/**
+ * Message Component
+ * 
+ * This component renders individual chat messages with support for:
+ * - Markdown rendering with syntax highlighting
+ * - Code blocks with proper formatting
+ * - Image display (including charts from backend)
+ * - Image zoom and download functionality
+ * - File attachments preview
+ * - Streaming indicator
+ * - Timestamp display
+ * 
+ * The component uses ReactMarkdown for rendering markdown content
+ * and includes custom renderers for code blocks and images.
+ */
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -8,7 +23,18 @@ import { MessageProps } from '@/types';
 import styles from './Message.module.css';
 import 'highlight.js/styles/github-dark.css';
 
-// Custom image renderer with download and zoom functionality for charts
+/**
+ * Custom image renderer component for charts and images.
+ * 
+ * Provides enhanced functionality for images:
+ * - Download button (for charts)
+ * - Zoom functionality (click to view larger)
+ * - Hover actions (download/zoom buttons appear on hover)
+ * - Modal view for full-size images
+ * 
+ * Distinguishes between regular images and charts (base64 data URLs)
+ * to provide appropriate functionality.
+ */
 const ChartImageRenderer = ({ src, alt }: { src?: string; alt?: string }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -184,6 +210,20 @@ const ChartImageRenderer = ({ src, alt }: { src?: string; alt?: string }) => {
   );
 };
 
+/**
+ * Message component that renders a single chat message.
+ * 
+ * Handles rendering of:
+ * - User and AI messages with different styling
+ * - Markdown content with syntax highlighting
+ * - Code blocks (inline and block)
+ * - Images and charts (with zoom/download)
+ * - File attachments
+ * - Streaming state indicator
+ * - Timestamps (shown after message is complete)
+ * 
+ * @param message - Message object containing text, sender, files, images, etc.
+ */
 export const Message: React.FC<MessageProps> = ({ message }) => {
   const { text, sender, timestamp, isStreaming, files = [], imageBase64, imageMime } = message;
   const [selectedImage, setSelectedImage] = useState<string | null>(null);

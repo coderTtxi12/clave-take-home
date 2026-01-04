@@ -1,4 +1,21 @@
-// Types para mensajes
+/**
+ * TypeScript Type Definitions
+ * 
+ * This module contains all TypeScript interfaces and types used throughout
+ * the dashboard application. It provides type safety and IntelliSense support
+ * for:
+ * - Message data structures
+ * - Component props
+ * - Hook return types
+ * - API response types
+ */
+
+/**
+ * Message interface representing a single chat message.
+ * 
+ * Messages can be from either the user or the AI assistant, and may
+ * include attached files, images, and streaming state.
+ */
 export interface Message {
   id: number;
   text: string;
@@ -10,7 +27,16 @@ export interface Message {
   imageMime?: string;    // MIME type of the image
 }
 
-// Props para componentes
+/**
+ * Component Props Interfaces
+ * 
+ * These interfaces define the props for each React component,
+ * ensuring type safety and clear component contracts.
+ */
+
+/**
+ * Props for the Header component.
+ */
 export interface HeaderProps {
   theme: 'dark' | 'light';
   toggleTheme: () => void;
@@ -59,7 +85,18 @@ export interface FilePreviewProps {
   onRemoveFile: (index: number) => void;
 }
 
-// Return types para hooks
+/**
+ * Hook Return Type Interfaces
+ * 
+ * These interfaces define the return types for custom React hooks,
+ * ensuring consistent API across hook implementations.
+ */
+
+/**
+ * Return type for the useChat hook.
+ * 
+ * Contains all state and functions needed for chat functionality.
+ */
 export interface UseChatReturn {
   messages: Message[];
   inputValue: string;

@@ -1,9 +1,33 @@
+/**
+ * Input Form Component
+ * 
+ * This component provides the chat input interface with:
+ * - Auto-resizing textarea (grows with content, max height)
+ * - File upload support (hidden file input)
+ * - Enter key to submit (Shift+Enter for new line)
+ * - Send button (disabled when empty or loading)
+ * - Visual feedback for file attachments
+ * 
+ * The textarea automatically adjusts its height based on content,
+ * with a maximum height before scrolling is enabled.
+ */
 'use client';
 
 import React, { useEffect, useRef } from 'react';
 import { InputFormProps } from '@/types';
 import styles from './InputForm.module.css';
 
+/**
+ * Input form component for chat messages.
+ * 
+ * Features:
+ * - Auto-resizing textarea
+ * - File upload support
+ * - Keyboard shortcuts (Enter to submit, Shift+Enter for new line)
+ * - Loading state handling
+ * 
+ * @param props - InputFormProps containing all input-related state and handlers
+ */
 export const InputForm: React.FC<InputFormProps> = ({
   inputValue,
   setInputValue,

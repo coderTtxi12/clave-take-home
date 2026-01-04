@@ -1,9 +1,30 @@
+/**
+ * File Preview Component
+ * 
+ * This component displays a preview of selected files before they are
+ * attached to a message. It provides:
+ * - Thumbnail previews for images
+ * - File type icons for non-image files
+ * - File name and size display
+ * - Remove file functionality
+ * 
+ * The component automatically generates thumbnails for image files
+ * and uses Material Icons for other file types.
+ */
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { FilePreviewProps } from '@/types';
 import styles from './FilePreview.module.css';
 
+/**
+ * Get the appropriate Material Icon name for a file type.
+ * 
+ * Maps file MIME types to Material Icons for visual representation.
+ * 
+ * @param file - File object to get icon for
+ * @returns Material Icon name string
+ */
 const getFileIcon = (file: File): string => {
   const type = file.type;
   if (type.startsWith('image/')) return 'image';
@@ -17,6 +38,15 @@ const getFileIcon = (file: File): string => {
   return 'insert_drive_file';
 };
 
+/**
+ * Format file size in bytes to human-readable string.
+ * 
+ * Converts bytes to appropriate unit (Bytes, KB, MB, GB) with
+ * 2 decimal places precision.
+ * 
+ * @param bytes - File size in bytes
+ * @returns Formatted file size string (e.g., "1.5 MB")
+ */
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -25,6 +55,15 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+/**
+ * Create a thumbnail preview for image files.
+ * 
+ * For image files, creates a data URL that can be used as an image source.
+ * For non-image files, returns null (icon will be used instead).
+ * 
+ * @param file - File object to create thumbnail for
+ * @returns Promise resolving to data URL string or null
+ */
 const createThumbnail = (file: File): Promise<string | null> => {
   return new Promise((resolve) => {
     if (file.type.startsWith('image/')) {
@@ -43,6 +82,20 @@ interface FileThumbnailProps {
   onRemove: () => void;
 }
 
+/**
+ * Individual file thumbnail component.
+ * 
+ * Displays a single file with:
+ * - Image thumbnail (if image file)
+ * - File type icon (if non-image)
+ * - File name (truncated if too long)
+ * - File size
+ * - Remove button
+ * 
+ * @param file - File object to display
+ * @param index - Index of file in the list
+ * @param onRemove - Callback function to remove this file
+ */
 const FileThumbnail: React.FC<FileThumbnailProps> = ({ file, onRemove }) => {
   const [thumbnail, setThumbnail] = useState<string | null>(null);
 
@@ -78,6 +131,18 @@ const FileThumbnail: React.FC<FileThumbnailProps> = ({ file, onRemove }) => {
   );
 };
 
+/**
+ * File preview component that displays all selected files.
+ * 
+ * Renders a list of file thumbnails with previews for images
+ * and icons for other file types. Each file can be removed
+ * individually.
+ * 
+ * Returns null if no files are selected (doesn't render anything).
+ * 
+ * @param files - Array of File objects to preview
+ * @param onRemoveFile - Callback function to remove a file by index
+ */
 export const FilePreview: React.FC<FilePreviewProps> = ({ files, onRemoveFile }) => {
   if (!files || files.length === 0) return null;
 
