@@ -1,6 +1,21 @@
 """
-Tools for coding agent
-Adapted to work with Docker code-executor instead of e2b sandbox
+Tools for Coding Agent
+
+This module provides a set of tools that the LLM can call during the
+agentic loop. These tools allow the agent to:
+- Execute Python code (execute_code)
+- List directories (list_directory)
+- Read files (read_file)
+- Write files (write_file)
+- Search file contents (search_file_content)
+- Find files by pattern (glob)
+
+All tools execute code in the isolated Docker code-executor container.
+The tools are designed to be safe and read-only where possible (database
+access is read-only, file writes are limited to outputs directory).
+
+Note: This implementation uses Docker-based code execution instead of
+the original e2b sandbox, but maintains the same interface for compatibility.
 """
 import json
 from typing import Callable, Optional, Dict, Any

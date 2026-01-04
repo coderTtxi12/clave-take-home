@@ -1,5 +1,22 @@
 """
 FastAPI Application Main Entry Point
+
+This module initializes and configures the FastAPI application for the
+Data Analyst Agent backend API.
+
+The application provides:
+- REST API endpoints for natural language data analysis
+- Code execution in isolated Docker containers
+- Session management via Redis
+- CORS support for frontend integration
+- OpenAPI/Swagger documentation
+
+Architecture:
+- FastAPI framework for async request handling
+- CORS middleware for cross-origin requests
+- Modular routing (health, coding-agent)
+- Structured logging
+- Environment-based configuration
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

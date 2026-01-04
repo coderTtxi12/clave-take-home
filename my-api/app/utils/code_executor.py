@@ -1,6 +1,21 @@
 """
-Code execution utilities for coding agent
-Executes code in isolated Docker container via HTTP
+Code Execution Utilities
+
+This module provides the interface for executing Python code in an isolated
+Docker container. The code executor service runs as a separate container
+with read-only database access, ensuring security and isolation.
+
+The execution flow:
+1. Code is sent via HTTP POST to the code executor service
+2. Code is executed in an isolated Python environment
+3. Results (stdout, stderr) are captured and returned
+4. Generated files (e.g., charts) are saved to a shared volume
+
+Security:
+- Code runs in isolated Docker container
+- Database access is read-only
+- Resource limits prevent abuse
+- Timeout protection prevents infinite loops
 """
 from typing import TypedDict
 import httpx

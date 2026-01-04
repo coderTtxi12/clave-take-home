@@ -1,5 +1,20 @@
 """
-Coding agent endpoints
+Coding Agent API Routes
+
+This module defines the FastAPI endpoints for the coding agent service:
+- POST /coding-agent/query: Main endpoint for natural language queries
+- POST /coding-agent/execute: Direct code execution endpoint
+- GET /coding-agent/session/{session_id}: Retrieve session information
+- DELETE /coding-agent/session/{session_id}: Delete a conversation session
+
+The main query endpoint orchestrates the agentic loop:
+1. Receives natural language query
+2. Retrieves conversation history from Redis (if session_id provided)
+3. Runs the coding agent with context compression
+4. Executes generated code in isolated Docker container
+5. Processes results and extracts images
+6. Saves updated conversation history
+7. Returns formatted response with answer, images, and metadata
 """
 from fastapi import APIRouter, status, HTTPException
 from app.core.logging import get_logger

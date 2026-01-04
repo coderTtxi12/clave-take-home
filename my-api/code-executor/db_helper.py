@@ -1,9 +1,26 @@
 """
-Database connection helper for code executor
-Provides READ-ONLY access to restaurant analytics database
+Database Connection Helper for Code Executor
+
+This module provides a read-only database connection for the code executor service.
+The connection uses a dedicated read-only PostgreSQL user to ensure security.
 
 ⚠️ IMPORTANT: This connection uses a READ-ONLY user.
 Only SELECT queries are allowed. INSERT/UPDATE/DELETE will fail.
+
+Security Features:
+- Read-only database user (code_executor_readonly)
+- Only SELECT permissions granted
+- No write access to any tables
+- Connection to local PostgreSQL container (Docker service name: 'postgres')
+
+Usage:
+    from db_helper import query_db
+    
+    # Execute a SELECT query
+    df = query_db("SELECT * FROM orders LIMIT 10")
+    
+The query_db function returns a pandas DataFrame, making it easy to work
+with database results in Python code executed by the agent.
 """
 import os
 import psycopg2

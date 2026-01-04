@@ -1,5 +1,17 @@
 """
-Health check endpoints
+Health Check API Routes
+
+This module provides health check endpoints for monitoring and load balancing:
+- GET /health: Basic health check (quick response)
+- GET /health/detailed: Detailed health check with component status
+
+These endpoints are used by:
+- Load balancers to determine if the service is healthy
+- Monitoring systems to track service availability
+- Deployment pipelines to verify successful deployments
+
+The basic health check returns immediately, while the detailed check
+can include status of dependencies (database, Redis, etc.).
 """
 from fastapi import APIRouter, status
 from app.models.health import HealthResponse, HealthCheckDetails

@@ -1,5 +1,18 @@
 """
-Coding agent request/response models
+Coding Agent Request/Response Models
+
+This module defines Pydantic models for the coding agent API endpoints.
+These models provide:
+- Request validation
+- Response serialization
+- API documentation (OpenAPI/Swagger)
+- Type safety
+
+Models:
+- CodeExecutionRequest: Direct code execution request
+- CodeExecutionResponse: Code execution results
+- CodingAgentRequest: Natural language query request
+- CodingAgentResponse: Complete agent response with answer, images, and metadata
 """
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any

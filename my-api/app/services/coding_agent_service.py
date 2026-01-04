@@ -1,6 +1,27 @@
 """
 Coding Agent Service
-Implements an agentic loop for code generation and execution
+
+This module implements an agentic AI system that uses Large Language Models (LLMs) to:
+1. Understand natural language queries
+2. Generate Python code to answer those queries
+3. Execute the code in an isolated Docker container
+4. Process and return results, including data visualizations
+
+The agent uses a tool-calling approach where the LLM can call the `execute_code` tool
+to run Python code. The code executor has read-only access to the PostgreSQL database
+and can generate charts using libraries like Matplotlib and Seaborn.
+
+Key Features:
+- Context compression: Automatically compresses long conversation histories to stay within token limits
+- Session management: Maintains conversation state across multiple queries
+- Tool execution: Isolated code execution in Docker containers for security
+- Image processing: Extracts and processes generated charts/visualizations
+
+Architecture:
+- Uses OpenAI's GPT models with function calling
+- Integrates with Docker-based code executor service
+- Stores conversation history in Redis
+- Supports streaming responses for real-time feedback
 """
 from typing import List, Dict, Any, Optional, Callable, Generator, Literal
 from openai import OpenAI
@@ -22,22 +43,65 @@ logger = get_logger()
 
 # Mock Sandbox class for compatibility (we use Docker code-executor instead)
 class MockSandbox:
-    """Mock Sandbox for compatibility with coding_agent interface"""
+    """
+    Mock Sandbox for compatibility with coding_agent interface.
+    
+    This class is kept for backward compatibility with the original e2b sandbox interface.
+    In this implementation, we use a Docker-based code executor service instead.
+    """
     pass
 
+# Token limit for the LLM context window
+# When usage exceeds TOKEN_LIMIT * COMPRESS_THRESHOLD, messages are compressed
 TOKEN_LIMIT = 60_000
+
+# Threshold (as ratio) for triggering message compression
+# When token usage exceeds 70% of TOKEN_LIMIT, compression is triggered
 COMPRESS_THRESHOLD = 0.7
+
+# Regex pattern to extract state snapshots from compressed messages
+# State snapshots are XML-like tags containing conversation summaries
 STATE_SNAPSHOT_PATTERN = re.compile(
     r"<state_snapshot>(.*?)</state_snapshot>", re.DOTALL
 )
 
 
 def clean_messages_for_llm(messages: list[dict]) -> list[dict]:
+    """
+    Remove internal metadata fields from messages before sending to LLM.
+    
+    Messages may contain internal metadata fields prefixed with "_" (e.g., "_metadata")
+    that should not be sent to the LLM. This function filters them out.
+    
+    Args:
+        messages: List of message dictionaries, potentially with internal fields
+        
+    Returns:
+        List of cleaned message dictionaries without internal fields
+    """
     return [{k: v for k, v in msg.items() if not k.startswith("_")} for msg in messages]
 
 
 def compress_messages(client: OpenAI, messages: list[dict]) -> list[dict]:
-    # Use standard OpenAI API
+    """
+    Compress a long conversation history into a concise state snapshot.
+    
+    When conversations become too long, this function uses an LLM to summarize
+    the entire conversation into a compact <state_snapshot> XML object. This snapshot
+    preserves key information (goals, facts, constraints, recent actions) while
+    dramatically reducing token usage.
+    
+    The compressed snapshot replaces the original messages, allowing the conversation
+    to continue without hitting token limits.
+    
+    Args:
+        client: OpenAI client instance
+        messages: List of message dictionaries to compress
+        
+    Returns:
+        List of new messages containing the compressed state snapshot
+    """
+    # Use standard OpenAI API to generate compression
     response = client.chat.completions.create(
         model="gpt-5-nano",
         messages=[
@@ -51,8 +115,10 @@ def compress_messages(client: OpenAI, messages: list[dict]) -> list[dict]:
     )
 
     text = response.choices[0].message.content or ""
-    # we extract the <state_snapshot>
+    # Extract the <state_snapshot> XML content
     context = "\n".join(STATE_SNAPSHOT_PATTERN.findall(text))
+    
+    # Create new messages with the compressed snapshot
     new_messages = [
         {
             "role": "user",
@@ -68,6 +134,18 @@ def compress_messages(client: OpenAI, messages: list[dict]) -> list[dict]:
 
 
 def format_messages(messages: list[dict]) -> str:
+    """
+    Format a list of messages into a human-readable string representation.
+    
+    This is primarily used for logging and debugging purposes. It converts
+    the structured message format into a simple text representation.
+    
+    Args:
+        messages: List of message dictionaries
+        
+    Returns:
+        Formatted string representation of the messages
+    """
     content = ""
     for message in messages:
         if "role" in message:
@@ -87,10 +165,24 @@ def format_messages(messages: list[dict]) -> str:
 
 
 def get_compress_message_index(messages: list[dict]) -> int:
-    # couting the number of chars
+    """
+    Determine the index at which to split messages for compression.
+    
+    This function calculates which messages should be compressed based on their
+    total character count. It finds the point where approximately COMPRESS_THRESHOLD
+    (70%) of the total characters have been processed, so those early messages
+    can be compressed while keeping the recent ones intact.
+    
+    Args:
+        messages: List of message dictionaries
+        
+    Returns:
+        Index at which to split messages (messages before this index will be compressed)
+    """
+    # Count characters in each message (approximate token estimation)
     chars = [len(json.dumps(message)) for message in messages]
     total_chars = sum(chars)
-    # we keep a portion of them
+    # Calculate target: keep only a portion (based on COMPRESS_THRESHOLD)
     target_chars = total_chars * COMPRESS_THRESHOLD
     curr_chars = 0
     for index, char in enumerate(chars):
@@ -102,6 +194,19 @@ def get_compress_message_index(messages: list[dict]) -> int:
 
 
 def get_first_user_message_index(messages: list[dict]) -> int:
+    """
+    Find the index of the first user message in a list of messages.
+    
+    This is used during compression to ensure we don't split in the middle
+    of a user-assistant exchange. We want to keep at least the first user
+    message to maintain context.
+    
+    Args:
+        messages: List of message dictionaries
+        
+    Returns:
+        Index of the first user message, or 0 if not found
+    """
     first_user_message_index = 0
     for index, message in enumerate(messages):
         if "role" in message:
@@ -113,20 +218,47 @@ def get_first_user_message_index(messages: list[dict]) -> int:
 def maybe_compress_messages(
     client: OpenAI, messages: list[dict], usage: int
 ) -> list[dict]:
+    """
+    Conditionally compress messages if token usage exceeds threshold.
+    
+    This function checks if the current token usage is approaching the limit.
+    If so, it compresses the older messages (keeping recent ones intact) to
+    reduce token usage while preserving conversation context.
+    
+    The compression process:
+    1. Calculates which messages to compress (older ones)
+    2. Ensures we don't split in the middle of a user-assistant exchange
+    3. Handles edge cases (e.g., function calls that need their outputs)
+    4. Compresses the selected messages into a state snapshot
+    
+    Args:
+        client: OpenAI client instance
+        messages: List of message dictionaries
+        usage: Current token usage count
+        
+    Returns:
+        List of messages (compressed if needed, original otherwise)
+    """
+    # Don't compress if usage is below threshold
     if usage <= TOKEN_LIMIT * COMPRESS_THRESHOLD:
         return messages
+    
+    # Calculate where to split messages for compression
     compress_index = get_compress_message_index(messages)
     if compress_index >= len(messages):
         return messages
+    
+    # Adjust to ensure we don't split in the middle of a user message
     compress_index += get_first_user_message_index(messages[compress_index:])
     if compress_index <= 0:
         return messages
-    # edge case, if we cut and the last message is `function_call`
-    # we need to add the output as well
+    
+    # Edge case: if we cut and the last message is a function_call,
+    # we need to include its output as well to maintain context
     last_message = messages[compress_index - 1]
     if "type" in last_message:
         if last_message["type"] == "function_call":
-            # add its output as well
+            # Include the function call output
             compress_index += 1
 
     to_compress_messages = messages[:compress_index]
@@ -153,6 +285,37 @@ def coding_agent(
     model: str = "gpt-4.1-mini",
     **model_kwargs,
 ) -> Generator[tuple[dict, dict, int], None, tuple[list[dict], int]]:
+    """
+    Main agentic loop for code generation and execution.
+    
+    This is the core function that implements the agentic AI system. It:
+    1. Takes a natural language query
+    2. Uses an LLM to generate Python code
+    3. Executes the code via tool calls
+    4. Processes results and continues iterating until a final answer is reached
+    
+    The function is a generator that yields intermediate states, allowing for
+    streaming responses and real-time feedback.
+    
+    Args:
+        client: OpenAI client instance
+        sbx: Mock sandbox (kept for compatibility, not used)
+        query: Natural language query from the user
+        tools: Dictionary of available tools (defaults to execute_code)
+        tools_schemas: List of tool schemas for the LLM (defaults to execute_code_schema)
+        max_steps: Maximum number of iterations (default: 5)
+        system: System prompt for the LLM (default: "You are a senior python programmer")
+        messages: Previous conversation history (optional)
+        usage: Previous token usage count (optional)
+        model: LLM model to use (default: "gpt-4.1-mini")
+        **model_kwargs: Additional model parameters
+        
+    Yields:
+        Tuple of (message_dict, all_messages, token_usage) for each step
+        
+    Returns:
+        Tuple of (final_messages, final_token_usage) when complete
+    """
     # Use default tools if not provided
     if tools is None:
         from app.services.coding_agent_service import tools as default_tools
@@ -220,7 +383,21 @@ def coding_agent(
 
 
 def log(generator_func, *args, **kwargs):
-    """Wraps the coding_agent and handles logging like the original"""
+    """
+    Wrapper function that adds logging to the coding_agent generator.
+    
+    This function wraps the coding_agent generator and logs each step of the
+    agentic loop, including tool calls, results, and generated images. It
+    provides visibility into the agent's decision-making process.
+    
+    Args:
+        generator_func: The coding_agent generator function
+        *args: Positional arguments to pass to generator_func
+        **kwargs: Keyword arguments to pass to generator_func
+        
+    Returns:
+        Tuple of (final_messages, final_token_usage)
+    """
     gen = generator_func(*args, **kwargs)
     step = 0
     pending_tool_calls = {}  # tool_call_id -> (name, arguments)
