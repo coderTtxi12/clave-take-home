@@ -325,6 +325,8 @@ Each location record stores its source ID in `source_ids` JSONB: `{"TOAST": "loc
 - `idx_orders_location_date_status` (location_id, business_date, status)
 - `idx_orders_source_created` (source, created_at)
 
+IMPORTANT: The date format in the business_date column is in YYYY-MM-DD format. If the user doesn ^`^yt explicitly mention the year in their query, assume they mean 2025. For example, the user might say  ^`^|Show me sales for January 2nd ^`^}, and you should interpret it as  ^`^|Show me sales for January 2nd, 2025
+
 ---
 
 ### order_items
